@@ -277,8 +277,8 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className="min-h-screen bg-field-grass bg-cover bg-center">
-        <div className="container mx-auto px-4 py-6 relative">
+      <main className="min-h-screen bg-gradient-to-br from-gray-800 to-gray-900">
+        <div className="container mx-auto px-4 py-6 relative backdrop-blur-sm">
           <header className="mb-6 text-center">
             <h1 className="text-3xl font-bold text-white drop-shadow-lg">
               Triaje Fútbol
@@ -297,41 +297,37 @@ export default function Home() {
             </div>
           ) : (
             <DndProvider backend={backend}>
-              <div className="lg:flex gap-6">
-                <div className="w-full lg:w-1/4 mb-6 lg:mb-0">
-                  <AvailablePlayers
-                    players={availablePlayers}
-                    isMobileView={isMobileView}
-                  />
-
-                  <div className="bg-black/70 backdrop-blur-sm rounded-xl p-4 mt-4">
-                    <h3 className="text-xl font-semibold mb-4 text-white">
-                      Acciones
-                    </h3>
-                    <div className="flex flex-col gap-3">
-                      <button
-                        onClick={handleReset}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg text-sm font-medium"
-                      >
-                        Reiniciar Equipos
-                      </button>
-                      {/* <button
-                        onClick={handleInitializeDb}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium"
-                      >
-                        Inicializar Base de Datos
-                      </button> */}
-                      <Link
-                        href="/players"
-                        className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium text-center"
-                      >
-                        Gestionar Jugadores
-                      </Link>
-                    </div>
-                  </div>
+              {/* Panel de Acciones (Arriba) */}
+              <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 mb-6 border border-white/10 shadow-lg">
+                <h3 className="text-xl font-semibold mb-4 text-white">
+                  Acciones
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={handleReset}
+                    className="bg-red-600/90 hover:bg-red-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    Reiniciar Equipos
+                  </button>
+                  {/* <button
+                    onClick={handleInitializeDb}
+                    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium"
+                  >
+                    Inicializar Base de Datos
+                  </button> */}
+                  <Link
+                    href="/players"
+                    className="bg-green-600/90 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium text-center transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    Gestionar Jugadores
+                  </Link>
                 </div>
+              </div>
 
-                <div className="w-full lg:w-3/4 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Contenido Principal: Alineaciones (Izquierda) y Jugadores (Derecha) */}
+              <div className="lg:flex gap-6">
+                {/* Alineaciones (Izquierda) */}
+                <div className="w-full lg:w-3/4 grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 lg:mb-0">
                   <TeamContainer
                     team={teams.borjas}
                     onPlayerDrop={handlePlayerDrop}
@@ -345,6 +341,14 @@ export default function Home() {
                     onPlayerRemove={handleRemovePlayer}
                     isMobileView={isMobileView}
                     availablePlayers={availablePlayers}
+                  />
+                </div>
+
+                {/* Jugadores Disponibles (Derecha) */}
+                <div className="w-full lg:w-1/4">
+                  <AvailablePlayers
+                    players={availablePlayers}
+                    isMobileView={isMobileView}
                   />
                 </div>
               </div>

@@ -122,7 +122,7 @@ export const TeamContainer = ({
         ref={divRef}
         className={`${
           team.id === "borjas" ? "bg-red-600" : "bg-purple-600"
-        } rounded-lg shadow-md p-2 sm:p-3 flex flex-col items-center min-w-[90px] sm:min-w-[100px] ${
+        } rounded-lg shadow-md p-2 sm:p-3 flex flex-col items-center justify-center w-full h-full ${
           isDragging ? "opacity-50" : "opacity-100"
         } cursor-move relative group`}
       >
@@ -146,14 +146,14 @@ export const TeamContainer = ({
             />
           </svg>
         </div>
-        <div className="bg-black/50 rounded-full w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center mb-1">
-          <p className="text-white font-bold text-lg">{player.rating}</p>
+        <div className="bg-black/50 rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mb-2">
+          <p className="text-white font-bold text-xl">{player.rating}</p>
         </div>
-        <p className="text-white font-bold text-sm sm:text-base text-center truncate w-full">
+        <p className="text-white font-bold text-sm sm:text-base text-center w-full mb-1">
           {player.name}
         </p>
         {player.stats && (
-          <div className="mt-1 flex items-center justify-center space-x-2 text-white/80 text-xs">
+          <div className="flex items-center justify-center space-x-2 text-white/80 text-xs">
             {player.position === "GK" ? (
               <span title="Saves">{player.stats.saves} S</span>
             ) : (
@@ -194,91 +194,198 @@ export const TeamContainer = ({
       (id) => team.players[position].find((player) => player.id === id)!
     );
 
-    const [collected, drop] = useDrop<
+    const [{ isOver, canDrop }, drop] = useDrop<
       Player,
       { team: string; position: Position },
       { isOver: boolean; canDrop: boolean }
     >({
       accept: "player",
-      drop: (item: Player) => {
+      drop: (item) => {
         onPlayerDrop(item.id, team.id, position);
         return { team: team.id, position };
       },
-      canDrop: () => uniquePlayers.length < maxPlayers,
       collect: (monitor) => ({
         isOver: !!monitor.isOver(),
         canDrop: !!monitor.canDrop(),
       }),
     });
 
-    const isOver = collected.isOver;
-    const canDrop = collected.canDrop;
-    const activeDropZone = isOver && canDrop;
-    const canAddMore = uniquePlayers.length < maxPlayers;
-
-    // Conectar el ref al elemento DOM
+    // Connect dropRef to the reference
     useEffect(() => {
-      if (dropZoneRef.current) {
-        drop(dropZoneRef.current);
-      }
+      drop(dropZoneRef);
     }, [drop]);
 
-    return (
-      <div className={`mb-1 sm:mb-2 ${className}`}>
-        <div
-          onClick={() => handlePositionClick(position)}
-          className={`flex items-center justify-between mb-1 ${getPositionColor(
-            position
-          )} px-2 sm:px-3 py-0.5 sm:py-1 rounded-md shadow-md ${
-            isMobileView ? "cursor-pointer" : ""
-          } ${selectedPosition === position ? "ring-2 ring-white" : ""}`}
-        >
-          <p className="font-bold text-white drop-shadow text-xs sm:text-sm truncate">
-            {getPositionName(position)}
-          </p>
-          <p className="ml-1 sm:ml-2 text-xs text-white">
-            {uniquePlayers.length}/{maxPlayers}
-          </p>
-        </div>
+    // Si estamos en modo móvil, comprobar si esta posición está seleccionada
+    const isSelected = selectedPosition === position;
 
+    return (
+      <div className="relative">
         <div
           ref={dropZoneRef}
-          onClick={() => isMobileView && handlePositionClick(position)}
-          className={`min-h-[120px] sm:min-h-[140px] ${
-            activeDropZone ? "bg-field-light/70" : "bg-field-dark/70"
-          } backdrop-blur-sm rounded-md p-1 sm:p-2 border ${
-            activeDropZone ? "border-white/80 border-2" : "border-white/10"
-          } shadow-md transition-all duration-200 flex flex-wrap gap-1 sm:gap-2 items-center justify-center ${
-            isMobileView ? "cursor-pointer" : ""
-          }`}
+          className={`position-drop-zone relative w-full rounded-xl backdrop-blur-sm p-3 ${getPositionColor(
+            position
+          )} shadow-md transition-colors ${
+            (isOver && canDrop) || isSelected
+              ? "ring-2 ring-white/70 ring-opacity-70"
+              : ""
+          } ${className}`}
+          onClick={() => handlePositionClick(position)}
         >
-          {uniquePlayers.length === 0 ? (
-            <p className="text-white/60 text-xs sm:text-sm text-center">
-              {isMobileView
-                ? "Toca para añadir jugadores"
-                : "Arrastra jugadores aquí"}
-            </p>
-          ) : position === "SUB" ? (
-            <div className="flex flex-wrap gap-2 justify-center w-full">
-              {uniquePlayers.map((player) => (
-                <DraggablePlayerCard key={player.id} player={player} />
-              ))}
-            </div>
-          ) : (
-            <div className="flex justify-center w-full">
-              {uniquePlayers.map((player) => (
-                <DraggablePlayerCard key={player.id} player={player} />
-              ))}
-            </div>
-          )}
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="font-semibold text-white text-shadow">
+              {getPositionName(position)}
+            </h4>
+            <span className="bg-black/50 text-white text-xs rounded-full px-2 py-0.5">
+              {uniquePlayers.length}/{maxPlayers}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {uniquePlayers.map((player) => (
+              <div key={player.id} className="w-full h-full">
+                <DraggablePlayerCard player={player} />
+              </div>
+            ))}
+            {uniquePlayers.length < maxPlayers && (
+              <div
+                className={`w-full h-24 sm:h-28 rounded-lg border-2 border-dashed border-white/50 flex items-center justify-center 
+                ${
+                  (isOver && canDrop) || isSelected
+                    ? "bg-white/20"
+                    : "bg-black/20"
+                } transition-colors`}
+              >
+                <span className="text-white/80 text-2xl">+</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const getTeamRating = () => {
+    // Obtener los jugadores no suplentes
+    const startingPlayers = Object.entries(team.players)
+      .filter(([pos]) => pos !== "SUB")
+      .flatMap(([, players]) => players);
+
+    // Calcular la media si hay jugadores
+    if (startingPlayers.length > 0) {
+      const totalRating = startingPlayers.reduce(
+        (sum, player) => sum + player.rating,
+        0
+      );
+      return (totalRating / startingPlayers.length).toFixed(1);
+    }
+    return "-";
+  };
+
+  return (
+    <div
+      className={`${
+        team.id === "borjas" ? "border-red-500/60" : "border-purple-500/60"
+      } border rounded-2xl bg-black/20 backdrop-blur-md p-3 sm:p-4 shadow-lg relative overflow-hidden`}
+    >
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-4">
+          <h3
+            className={`font-bold text-lg sm:text-xl ${
+              team.id === "borjas" ? "text-red-400" : "text-purple-400"
+            }`}
+          >
+            {team.name}
+          </h3>
+          <div className="flex items-center">
+            <span className="text-xs text-white/60 mr-1">Media:</span>
+            <span
+              className={`bg-black/50 text-white text-sm px-2 py-0.5 rounded-md ${
+                team.id === "borjas" ? "border-red-500" : "border-purple-500"
+              } border`}
+            >
+              {getTeamRating()}
+            </span>
+          </div>
         </div>
 
-        {/* Selector de jugadores para móvil */}
-        {isMobileView && selectedPosition === position && canAddMore && (
+        {/* Campo de fútbol */}
+        <div className="relative pb-8 sm:pb-10">
+          {/* Fondo del campo */}
+          <div className="absolute inset-0 bg-green-800/50 rounded-xl opacity-75 z-0"></div>
+
+          {/* Líneas del campo */}
+          <div className="absolute inset-0 z-0 rounded-xl overflow-hidden">
+            <div className="absolute w-full h-[1px] top-1/2 bg-white/30"></div>
+            <div className="absolute w-[1px] h-full left-1/2 bg-white/30"></div>
+            {/* Círculo central */}
+            <div className="absolute w-16 h-16 sm:w-24 sm:h-24 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-[1px] border-white/30 rounded-full"></div>
+            {/* Área grande superior */}
+            <div className="absolute w-32 h-16 sm:w-48 sm:h-24 top-0 left-1/2 -translate-x-1/2 border-b-[1px] border-l-[1px] border-r-[1px] border-white/30 rounded-b-xl"></div>
+            {/* Área grande inferior */}
+            <div className="absolute w-32 h-16 sm:w-48 sm:h-24 bottom-0 left-1/2 -translate-x-1/2 border-t-[1px] border-l-[1px] border-r-[1px] border-white/30 rounded-t-xl"></div>
+            {/* Área pequeña superior */}
+            <div className="absolute w-16 h-8 sm:w-24 sm:h-12 top-0 left-1/2 -translate-x-1/2 border-b-[1px] border-l-[1px] border-r-[1px] border-white/30 rounded-b-lg"></div>
+            {/* Área pequeña inferior */}
+            <div className="absolute w-16 h-8 sm:w-24 sm:h-12 bottom-0 left-1/2 -translate-x-1/2 border-t-[1px] border-l-[1px] border-r-[1px] border-white/30 rounded-t-lg"></div>
+          </div>
+
+          {/* Estructura de alineación en forma de campo de fútbol */}
+          <div className="grid grid-rows-4 gap-4 sm:gap-6 relative z-10 pt-4 pb-4">
+            {/* Portero */}
+            <div className="row-start-4 flex justify-center">
+              <div className="w-full max-w-[120px] sm:max-w-[140px]">
+                <PositionDropZone position="GK" maxPlayers={1} />
+              </div>
+            </div>
+
+            {/* Defensas */}
+            <div className="row-start-3 flex justify-between px-2 sm:px-4">
+              <div className="w-[45%]">
+                <PositionDropZone position="CL" maxPlayers={1} />
+              </div>
+              <div className="w-[45%]">
+                <PositionDropZone position="CR" maxPlayers={1} />
+              </div>
+            </div>
+
+            {/* Medios */}
+            <div className="row-start-2 flex justify-between px-2 sm:px-4">
+              <div className="w-[45%]">
+                <PositionDropZone position="ML" maxPlayers={1} />
+              </div>
+              <div className="w-[45%]">
+                <PositionDropZone position="MR" maxPlayers={1} />
+              </div>
+            </div>
+
+            {/* Delantero */}
+            <div className="row-start-1 flex justify-center">
+              <div className="w-full max-w-[120px] sm:max-w-[140px]">
+                <PositionDropZone position="ST" maxPlayers={1} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Suplentes */}
+        <div className="mt-3">
+          <PositionDropZone
+            position="SUB"
+            maxPlayers={5}
+            className="bg-gray-700/30"
+          />
+        </div>
+      </div>
+
+      {/* Modal para selección de jugadores (fuera del componente PositionDropZone) */}
+      {selectedPosition &&
+        availablePlayers &&
+        availablePlayers.length > 0 &&
+        isMobileView && (
           <div className="fixed inset-0 bg-black/80 z-50 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-white/10">
               <h4 className="text-white text-lg font-bold">
-                {getPositionName(position)} - Selecciona un jugador
+                {getPositionName(selectedPosition)} - Selecciona un jugador
               </h4>
               <button
                 onClick={() => setSelectedPosition(null)}
@@ -313,8 +420,10 @@ export const TeamContainer = ({
                   {availablePlayers.map((player) => (
                     <div
                       key={player.id}
-                      onClick={() => handlePlayerSelect(player, position)}
-                      className="bg-gray-800 hover:bg-gray-700 text-white p-4 rounded-lg cursor-pointer shadow-md"
+                      onClick={() =>
+                        handlePlayerSelect(player, selectedPosition)
+                      }
+                      className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700 text-white p-4 rounded-lg cursor-pointer shadow-md"
                     >
                       <div className="flex items-center">
                         <span className="bg-yellow-500 text-black rounded-full w-10 h-10 flex items-center justify-center mr-3 text-lg font-bold">
@@ -338,88 +447,6 @@ export const TeamContainer = ({
             </div>
           </div>
         )}
-      </div>
-    );
-  };
-
-  const teamBgClass =
-    team.id === "borjas"
-      ? "from-red-600/50 to-red-800/50"
-      : "from-purple-600/50 to-purple-800/50";
-  const teamTextColor =
-    team.id === "borjas" ? "text-red-100" : "text-purple-100";
-
-  return (
-    <div
-      className={`bg-gradient-to-br ${teamBgClass} backdrop-blur-sm rounded-xl p-2 sm:p-4 border border-white/10 shadow-lg`}
-    >
-      <h2
-        className={`text-xl sm:text-2xl font-bold mb-2 sm:mb-3 text-center ${teamTextColor} drop-shadow-lg`}
-      >
-        {team.name}
-      </h2>
-
-      <div className="relative pb-2 sm:pb-4">
-        {/* Campo de fútbol */}
-        <div className="absolute inset-0 bg-field rounded-lg opacity-75 z-0"></div>
-
-        {/* Líneas del campo */}
-        <div className="absolute inset-0 z-0">
-          <div className="absolute w-full h-[1px] top-1/2 bg-white/20"></div>
-          <div className="absolute w-[1px] h-full left-1/2 bg-white/20"></div>
-          <div className="absolute w-20 h-20 sm:w-32 sm:h-32 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border-[1px] border-white/20 rounded-full"></div>
-          <div className="absolute w-24 h-24 sm:w-40 sm:h-40 -top-4 sm:-top-6 left-1/2 -translate-x-1/2 border-b-[1px] border-white/20 rounded-b-full"></div>
-          <div className="absolute w-24 h-24 sm:w-40 sm:h-40 -bottom-4 sm:-bottom-6 left-1/2 -translate-x-1/2 border-t-[1px] border-white/20 rounded-t-full"></div>
-        </div>
-
-        {/* Estructura de alineación 6 jugadores */}
-        <div className="grid grid-cols-4 gap-1 sm:gap-2 relative z-1">
-          {/* Portero */}
-          <div className="col-span-4 flex justify-center">
-            <div className="w-full max-w-[120px] sm:max-w-[140px]">
-              <PositionDropZone position="GK" maxPlayers={1} />
-            </div>
-          </div>
-
-          {/* Defensa - 2 Centrales */}
-          <div className="col-span-2 flex justify-center">
-            <div className="w-full">
-              <PositionDropZone position="CL" maxPlayers={1} />
-            </div>
-          </div>
-
-          <div className="col-span-2 flex justify-center">
-            <div className="w-full">
-              <PositionDropZone position="CR" maxPlayers={1} />
-            </div>
-          </div>
-
-          {/* Medio Campo - 2 Medios */}
-          <div className="col-span-2 flex justify-center">
-            <div className="w-full">
-              <PositionDropZone position="ML" maxPlayers={1} />
-            </div>
-          </div>
-
-          <div className="col-span-2 flex justify-center">
-            <div className="w-full">
-              <PositionDropZone position="MR" maxPlayers={1} />
-            </div>
-          </div>
-
-          {/* Delantero */}
-          <div className="col-span-4 flex justify-center">
-            <div className="w-full max-w-[120px] sm:max-w-[140px]">
-              <PositionDropZone position="ST" maxPlayers={1} />
-            </div>
-          </div>
-        </div>
-
-        {/* Suplentes */}
-        <div className="mt-2 sm:mt-4">
-          <PositionDropZone position="SUB" maxPlayers={10} />
-        </div>
-      </div>
     </div>
   );
 };

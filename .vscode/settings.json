@@ -1,0 +1,10 @@
+{
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#213300",
+        "titleBar.activeBackground": "#2F4700",
+        "titleBar.activeForeground": "#F1FFD6"
+    },
+    "jumpToAliasFile.alias": {
+        "@": "/Users/david.nieto/PrivateProjects/futbol-triaje/src"
+    }
+}

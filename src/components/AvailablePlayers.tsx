@@ -64,7 +64,7 @@ export const AvailablePlayers = ({
   };
 
   return (
-    <div className="bg-field-dark/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 shadow-lg border border-white/10">
+    <div className="bg-black/20 backdrop-blur-md rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 shadow-lg border border-white/10">
       <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-white drop-shadow flex items-center">
         <span className="bg-yellow-500 text-black rounded-full h-6 w-6 flex items-center justify-center mr-2 text-xs sm:text-sm">
           {players.length}
@@ -73,7 +73,7 @@ export const AvailablePlayers = ({
       </h3>
 
       {players.length === 0 ? (
-        <div className="flex justify-center items-center h-[120px] sm:h-[180px] bg-field-dark/50 rounded-md border border-white/5">
+        <div className="flex justify-center items-center h-[120px] sm:h-[180px] bg-black/30 rounded-md border border-white/5">
           <p className="text-white/70 text-sm sm:text-base">
             Todos los jugadores han sido asignados
           </p>
