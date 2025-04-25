@@ -170,7 +170,7 @@ export default function PlayersPage() {
             <button
               onClick={handleInitializeDb}
               className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg"
-              disabled={loading}
+              disabled={true || loading}
             >
               Inicializar Base de Datos
             </button>
