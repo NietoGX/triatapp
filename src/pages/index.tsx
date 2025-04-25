@@ -410,11 +410,9 @@ export default function Home() {
         <div className="container mx-auto px-4 py-6 relative backdrop-blur-sm">
           <header className="mb-6 text-center">
             <h1 className="text-3xl font-bold text-white drop-shadow-lg">
-              Triaje Fútbol
+              TriatApp ⚽️
             </h1>
-            <p className="text-white/80">
-              Organiza los equipos de manera equilibrada
-            </p>
+            <p className="text-white/80">De NietakO para los chavales ❤️</p>
           </header>
 
           {isLoading ? (

@@ -27,7 +27,10 @@ export default function DraftSystem({
 
   const [draftHistory, setDraftHistory] = useState<DraftHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPickingPlayer, setIsPickingPlayer] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fadeEffect, setFadeEffect] = useState(false);
+  const [showTurnIndicator, setShowTurnIndicator] = useState(false);
 
   // Cargar el estado inicial del triaje
   useEffect(() => {
@@ -43,6 +46,27 @@ export default function DraftSystem({
       onDraftStateChange(draftState);
     }
   }, [draftState, onDraftStateChange]);
+
+  // Efecto de animación cuando cambia el turno
+  useEffect(() => {
+    if (draftState.is_active && draftState.current_team) {
+      setFadeEffect(true);
+      setShowTurnIndicator(true);
+
+      const fadeTimer = setTimeout(() => {
+        setFadeEffect(false);
+      }, 2000);
+
+      const indicatorTimer = setTimeout(() => {
+        setShowTurnIndicator(false);
+      }, 3000);
+
+      return () => {
+        clearTimeout(fadeTimer);
+        clearTimeout(indicatorTimer);
+      };
+    }
+  }, [draftState.current_team]);
 
   // Cargar el estado del triaje
   const loadDraftState = async () => {
@@ -128,10 +152,10 @@ export default function DraftSystem({
 
   // Seleccionar un jugador en el triaje
   const handlePickPlayer = async (playerId: string) => {
-    if (!draftState.current_team) return;
+    if (!draftState.current_team || isPickingPlayer) return;
 
     try {
-      setIsLoading(true);
+      setIsPickingPlayer(true);
       setError(null);
       const result = await draftApi.pickPlayer(
         draftState.current_team,
@@ -149,10 +173,10 @@ export default function DraftSystem({
         setError(result.error?.message || "Error al seleccionar jugador");
       }
 
-      setIsLoading(false);
+      setIsPickingPlayer(false);
     } catch {
       setError("Error al seleccionar jugador");
-      setIsLoading(false);
+      setIsPickingPlayer(false);
     }
   };
 
@@ -163,7 +187,21 @@ export default function DraftSystem({
   };
 
   return (
-    <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 mb-6 border border-white/10 shadow-lg">
+    <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 mb-6 border border-white/10 shadow-lg relative">
+      {showTurnIndicator && draftState.is_active && draftState.current_team && (
+        <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <div className="bg-blue-600/80 backdrop-blur-md p-6 rounded-xl shadow-lg border border-blue-400 animate-bounce-in">
+            <div className="text-center">
+              <p className="text-white text-lg">Turno de</p>
+              <p className="text-white text-4xl font-bold my-2 animate-pulse">
+                {getCurrentTeamName()}
+              </p>
+              <p className="text-blue-200 text-sm">¡Selecciona un jugador!</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h2 className="text-2xl font-semibold mb-4 text-white">
         Sistema de Triaje
       </h2>
@@ -185,9 +223,26 @@ export default function DraftSystem({
           </span>
         </p>
         {draftState.is_active && (
-          <p className="text-white">
-            <span className="font-bold">Turno:</span> {getCurrentTeamName()}
-          </p>
+          <div className="mt-2">
+            <p className="text-white text-sm font-medium mb-1">Turno actual:</p>
+            <div
+              className={`
+                bg-blue-600/40 p-3 rounded-lg border border-blue-500/50 
+                flex items-center justify-center relative
+                ${fadeEffect ? "animate-pulse" : ""}
+              `}
+            >
+              <div
+                className={`
+                absolute inset-0 bg-gradient-to-r from-blue-400/0 via-blue-400/30 to-blue-400/0
+                rounded-lg ${fadeEffect ? "animate-gradient-x" : "opacity-0"}
+              `}
+              ></div>
+              <p className="text-white text-xl font-bold relative z-10">
+                {getCurrentTeamName()}
+              </p>
+            </div>
+          </div>
         )}
       </div>
 
@@ -213,21 +268,59 @@ export default function DraftSystem({
       {/* Lista de jugadores disponibles para seleccionar */}
       {draftState.is_active && (
         <div>
-          <h3 className="text-xl text-white font-medium mb-3">
-            Jugadores Disponibles
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl text-white font-medium">
+              Jugadores Disponibles
+              {isPickingPlayer && (
+                <span className="ml-2 text-yellow-400 text-sm">
+                  (Seleccionando jugador...)
+                </span>
+              )}
+            </h3>
+            <div
+              className={`
+              flex items-center bg-blue-600/30 px-3 py-1 rounded-lg
+              transition-all duration-300
+              ${fadeEffect ? "bg-blue-500/50 shadow-lg shadow-blue-500/20" : ""}
+            `}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-blue-400 mr-1"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span className="text-white font-medium">
+                Turno:{" "}
+                <span
+                  className={`${
+                    fadeEffect ? "text-white font-bold" : "text-blue-300"
+                  }`}
+                >
+                  {getCurrentTeamName()}
+                </span>
+              </span>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
             {availablePlayers.map((player) => (
               <div
                 key={player.id}
                 onClick={() => handlePickPlayer(player.id)}
                 className={`
-                  p-3 rounded-lg cursor-pointer transition-all duration-200
+                  p-3 rounded-lg transition-all duration-200
                   ${
-                    draftState.current_team
-                      ? "hover:bg-blue-600 bg-gray-700/60"
+                    draftState.current_team && !isPickingPlayer
+                      ? "hover:bg-blue-600 bg-gray-700/60 cursor-pointer"
                       : "bg-gray-700/30 cursor-not-allowed"
                   }
+                  ${isPickingPlayer ? "opacity-50" : ""}
                 `}
               >
                 <p className="text-white font-medium">{player.name}</p>
@@ -263,6 +356,46 @@ export default function DraftSystem({
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes bounceIn {
+          0% {
+            opacity: 0;
+            transform: scale(0.3) translateY(-40px);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.05) translateY(0);
+          }
+          70% {
+            transform: scale(0.9);
+          }
+          100% {
+            transform: scale(1);
+          }
+        }
+
+        @keyframes gradientX {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+
+        .animate-bounce-in {
+          animation: bounceIn 0.6s ease-out;
+        }
+
+        .animate-gradient-x {
+          background-size: 200% 100%;
+          animation: gradientX 2s linear infinite;
+        }
+      `}</style>
     </div>
   );
 }
