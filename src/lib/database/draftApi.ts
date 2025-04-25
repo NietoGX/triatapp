@@ -81,7 +81,13 @@ export async function getDraftState() {
       .eq("id", "current")
       .single();
 
-    if (error && error.code !== "PGRST116") throw error;
+    if (error) {
+      if (error.code === "PGRST116") {
+        // No existe el estado, se creará uno por defecto
+      } else {
+        throw error;
+      }
+    }
 
     // Si no existe, crear un estado inicial inactivo
     if (!data) {

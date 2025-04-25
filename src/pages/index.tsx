@@ -354,8 +354,33 @@ export default function Home() {
     const player = availablePlayers.find((p) => p.id === playerId);
     if (!player) return;
 
-    // Por defecto, colocar en SUB
-    handlePlayerDrop(playerId, teamId, "SUB");
+    // Primero, eliminar al jugador de la lista de disponibles
+    setAvailablePlayers((prev) => prev.filter((p) => p.id !== playerId));
+
+    // Step 1: Create a new teams object to avoid direct mutation
+    const newTeams = JSON.parse(JSON.stringify(teams)) as typeof teams;
+
+    // Step 2: Add player to the SUB position in the team
+    const updatedPlayer = {
+      ...player,
+      team: teamId,
+    };
+
+    newTeams[teamId].players["SUB"].push(updatedPlayer);
+
+    // Step 3: Update state with the new teams object
+    setTeams(newTeams);
+
+    // Step 4: Guardar en la base de datos
+    try {
+      // Determinar el orden (por ahora siempre al final)
+      const order = newTeams[teamId].players["SUB"].length - 1;
+
+      // Guardar la posición en la base de datos
+      lineupApi.savePosition(teamId, playerId, "SUB", order);
+    } catch (error) {
+      console.error("Error al guardar posición en base de datos:", error);
+    }
   };
 
   // Alternar la visibilidad del sistema de triaje
