@@ -3,10 +3,17 @@ export type Position = "GK" | "CL" | "CR" | "ML" | "MR" | "ST" | "SUB";
 export type Player = {
   id: string;
   name: string;
-  avatar: string;
   rating: number;
-  position?: Position;
+  position?: Position | null;
   team?: "borjas" | "nietos" | null;
+  stats?: {
+    goals: number;
+    assists: number;
+    saves: number;
+    goalsSaved: number;
+  };
+  number?: number;
+  nickname?: string;
 };
 
 export type Team = {

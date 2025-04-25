@@ -9,6 +9,7 @@ interface TeamContainerProps {
     teamId: "borjas" | "nietos",
     position: Position
   ) => void;
+  onPlayerRemove: (playerId: string) => void;
   isMobileView?: boolean;
   availablePlayers?: Player[];
 }
@@ -16,6 +17,7 @@ interface TeamContainerProps {
 export const TeamContainer = ({
   team,
   onPlayerDrop,
+  onPlayerRemove,
   isMobileView = false,
   availablePlayers = [],
 }: TeamContainerProps) => {
@@ -122,14 +124,46 @@ export const TeamContainer = ({
           team.id === "borjas" ? "bg-red-600" : "bg-purple-600"
         } rounded-lg shadow-md p-2 sm:p-3 flex flex-col items-center min-w-[90px] sm:min-w-[100px] ${
           isDragging ? "opacity-50" : "opacity-100"
-        } cursor-move`}
+        } cursor-move relative group`}
       >
+        <div
+          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlayerRemove(player.id);
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-4 w-4"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fillRule="evenodd"
+              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </div>
         <div className="bg-black/50 rounded-full w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center mb-1">
           <p className="text-white font-bold text-lg">{player.rating}</p>
         </div>
         <p className="text-white font-bold text-sm sm:text-base text-center truncate w-full">
           {player.name}
         </p>
+        {player.stats && (
+          <div className="mt-1 flex items-center justify-center space-x-2 text-white/80 text-xs">
+            {player.position === "GK" ? (
+              <span title="Saves">{player.stats.saves} S</span>
+            ) : (
+              <>
+                <span title="Goals">{player.stats.goals} G</span>
+                <span title="Assists">{player.stats.assists} A</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -150,6 +184,16 @@ export const TeamContainer = ({
       team.players[position] = [];
     }
 
+    // Crear una lista de IDs de jugadores únicas
+    const uniquePlayerIds = Array.from(
+      new Set(team.players[position].map((player) => player.id))
+    );
+
+    // Filtrar jugadores duplicados manteniendo sólo la primera ocurrencia
+    const uniquePlayers = uniquePlayerIds.map(
+      (id) => team.players[position].find((player) => player.id === id)!
+    );
+
     const [collected, drop] = useDrop<
       Player,
       { team: string; position: Position },
@@ -160,7 +204,7 @@ export const TeamContainer = ({
         onPlayerDrop(item.id, team.id, position);
         return { team: team.id, position };
       },
-      canDrop: () => team.players[position].length < maxPlayers,
+      canDrop: () => uniquePlayers.length < maxPlayers,
       collect: (monitor) => ({
         isOver: !!monitor.isOver(),
         canDrop: !!monitor.canDrop(),
@@ -170,7 +214,7 @@ export const TeamContainer = ({
     const isOver = collected.isOver;
     const canDrop = collected.canDrop;
     const activeDropZone = isOver && canDrop;
-    const canAddMore = team.players[position].length < maxPlayers;
+    const canAddMore = uniquePlayers.length < maxPlayers;
 
     // Conectar el ref al elemento DOM
     useEffect(() => {
@@ -193,7 +237,7 @@ export const TeamContainer = ({
             {getPositionName(position)}
           </p>
           <p className="ml-1 sm:ml-2 text-xs text-white">
-            {team.players[position].length}/{maxPlayers}
+            {uniquePlayers.length}/{maxPlayers}
           </p>
         </div>
 
@@ -208,7 +252,7 @@ export const TeamContainer = ({
             isMobileView ? "cursor-pointer" : ""
           }`}
         >
-          {team.players[position].length === 0 ? (
+          {uniquePlayers.length === 0 ? (
             <p className="text-white/60 text-xs sm:text-sm text-center">
               {isMobileView
                 ? "Toca para añadir jugadores"
@@ -216,13 +260,13 @@ export const TeamContainer = ({
             </p>
           ) : position === "SUB" ? (
             <div className="flex flex-wrap gap-2 justify-center w-full">
-              {team.players[position].map((player) => (
+              {uniquePlayers.map((player) => (
                 <DraggablePlayerCard key={player.id} player={player} />
               ))}
             </div>
           ) : (
             <div className="flex justify-center w-full">
-              {team.players[position].map((player) => (
+              {uniquePlayers.map((player) => (
                 <DraggablePlayerCard key={player.id} player={player} />
               ))}
             </div>

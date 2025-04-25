@@ -1,380 +1,357 @@
-import { useState, useCallback, useEffect } from "react";
+import { useEffect, useState } from "react";
+import Head from "next/head";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import { v4 as uuidv4 } from "uuid";
+import { TouchBackend } from "react-dnd-touch-backend";
+import { isMobile } from "react-device-detect";
+import Link from "next/link";
 
-import { Player, Position, Team } from "@/types";
 import AvailablePlayers from "@/components/AvailablePlayers";
 import TeamContainer from "@/components/TeamContainer";
+import { Player, Team, Position } from "@/types";
+import { playerApi } from "@/lib/api";
 
-// Datos de ejemplo para jugadores
-const SAMPLE_PLAYERS: Player[] = [
-  {
-    id: uuidv4(),
-    name: "Alexandre",
-    avatar: "https://randomuser.me/api/portraits/men/1.jpg",
-    rating: 86,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Aitor",
-    avatar: "https://randomuser.me/api/portraits/men/2.jpg",
-    rating: 87,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Rubert",
-    avatar: "https://randomuser.me/api/portraits/men/3.jpg",
-    rating: 85,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Nieto",
-    avatar: "https://randomuser.me/api/portraits/men/4.jpg",
-    rating: 89,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Eloy",
-    avatar: "https://randomuser.me/api/portraits/men/5.jpg",
-    rating: 84,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Borja",
-    avatar: "https://randomuser.me/api/portraits/men/6.jpg",
-    rating: 88,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Gilito",
-    avatar: "https://randomuser.me/api/portraits/men/7.jpg",
-    rating: 83,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Sergi",
-    avatar: "https://randomuser.me/api/portraits/men/8.jpg",
-    rating: 85,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Lluism",
-    avatar: "https://randomuser.me/api/portraits/men/9.jpg",
-    rating: 82,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Seglar",
-    avatar: "https://randomuser.me/api/portraits/men/10.jpg",
-    rating: 84,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Jordan",
-    avatar: "https://randomuser.me/api/portraits/men/11.jpg",
-    rating: 86,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Albert",
-    avatar: "https://randomuser.me/api/portraits/men/12.jpg",
-    rating: 85,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Jordi",
-    avatar: "https://randomuser.me/api/portraits/men/13.jpg",
-    rating: 83,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Serrano",
-    avatar: "https://randomuser.me/api/portraits/men/14.jpg",
-    rating: 87,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Lluis",
-    avatar: "https://randomuser.me/api/portraits/men/15.jpg",
-    rating: 84,
-    position: undefined,
-    team: null,
-  },
-  {
-    id: uuidv4(),
-    name: "Carlitros",
-    avatar: "https://randomuser.me/api/portraits/men/16.jpg",
-    rating: 85,
-    position: undefined,
-    team: null,
-  },
-];
-
-// Estado inicial de equipos
-const INITIAL_TEAMS: Team[] = [
-  {
+// Default empty teams structure
+const DEFAULT_TEAMS: { [key: string]: Team } = {
+  borjas: {
     id: "borjas",
-    name: "Team Borjas",
+    name: "Casper",
     players: {
-      GK: [], // Portero
-      CL: [], // Central Izquierda
-      CR: [], // Central Derecha
-      ML: [], // Medio Izquierda
-      MR: [], // Medio Derecha
-      ST: [], // Delantero Pichichi
-      SUB: [], // Suplentes
+      GK: [],
+      CL: [],
+      CR: [],
+      ML: [],
+      MR: [],
+      ST: [],
+      SUB: [],
     },
   },
-  {
+  nietos: {
     id: "nietos",
-    name: "Team Nietos",
+    name: "NietakO",
     players: {
-      GK: [], // Portero
-      CL: [], // Central Izquierda
-      CR: [], // Central Derecha
-      ML: [], // Medio Izquierda
-      MR: [], // Medio Derecha
-      ST: [], // Delantero Pichichi
-      SUB: [], // Suplentes
+      GK: [],
+      CL: [],
+      CR: [],
+      ML: [],
+      MR: [],
+      ST: [],
+      SUB: [],
     },
   },
-];
+};
 
 export default function Home() {
-  // Estado para controlar si estamos en el cliente
+  // Use mobile detection for touch vs mouse interactions
+  const [isMobileView, setIsMobileView] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dbInitialized, setDbInitialized] = useState(false);
 
-  // Inicializar con los valores por defecto
-  const [availablePlayers, setAvailablePlayers] =
-    useState<Player[]>(SAMPLE_PLAYERS);
-  const [teams, setTeams] = useState<Team[]>(INITIAL_TEAMS);
-  const [isMobileDevice, setIsMobileDevice] = useState(false);
+  // Players and teams state
+  const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
+  const [teams, setTeams] = useState<{ [key: string]: Team }>(DEFAULT_TEAMS);
 
-  // Este useEffect se ejecuta sólo en el cliente después del primer render
   useEffect(() => {
     setIsClient(true);
-
-    // Cargar datos del localStorage
-    const storedPlayers = localStorage.getItem("triatapp-availablePlayers");
-    const storedTeams = localStorage.getItem("triatapp-teams");
-
-    if (storedPlayers) {
-      setAvailablePlayers(JSON.parse(storedPlayers));
-    }
-
-    if (storedTeams) {
-      setTeams(JSON.parse(storedTeams));
-    }
-
-    // Detectar si es un dispositivo móvil
-    const detectMobile = () => {
-      return (
-        window.innerWidth <= 768 ||
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent
-        )
-      );
-    };
-
-    setIsMobileDevice(detectMobile());
-
-    const handleResize = () => {
-      setIsMobileDevice(detectMobile());
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    setIsMobileView(isMobile);
   }, []);
 
-  // Guardar en localStorage cada vez que cambian (solo en cliente)
+  // Load players from database
   useEffect(() => {
-    if (isClient) {
-      localStorage.setItem(
-        "triatapp-availablePlayers",
-        JSON.stringify(availablePlayers)
-      );
-    }
-  }, [availablePlayers, isClient]);
+    async function loadPlayers() {
+      try {
+        setIsLoading(true);
+        const dbPlayers = await playerApi.getAll();
 
+        // Map database players to app players format
+        const appPlayers: Player[] = dbPlayers.map((p) => ({
+          id: p.id,
+          name: p.name,
+          rating: p.rating,
+          position: p.position as Position | null,
+          team: null,
+          stats: {
+            goals: p.goals,
+            assists: p.assists,
+            saves: p.saves,
+            goalsSaved: p.goals_saved,
+          },
+          number: p.number || undefined,
+          nickname: p.nickname || undefined,
+        }));
+
+        // Restore team assignments from localStorage if it exists
+        const storedTeamsData = localStorage.getItem("triatapp-teams");
+        if (storedTeamsData) {
+          const storedTeams = JSON.parse(storedTeamsData) as {
+            [key: string]: Team;
+          };
+
+          // We need to merge the stored team assignments with the fresh player data
+          const teamsWithUpdatedPlayers = { ...storedTeams };
+
+          // For each position in each team, update player data with fresh data from DB
+          Object.keys(teamsWithUpdatedPlayers).forEach((teamId) => {
+            Object.keys(teamsWithUpdatedPlayers[teamId].players).forEach(
+              (pos) => {
+                const position = pos as Position;
+                teamsWithUpdatedPlayers[teamId].players[position] =
+                  teamsWithUpdatedPlayers[teamId].players[position].map(
+                    (teamPlayer) => {
+                      // Find the updated player data
+                      const updatedPlayer = appPlayers.find(
+                        (p) => p.id === teamPlayer.id
+                      );
+                      if (updatedPlayer) {
+                        // Return player with team assignment but updated stats
+                        return {
+                          ...updatedPlayer,
+                          team: teamId as "borjas" | "nietos",
+                        };
+                      }
+                      return teamPlayer;
+                    }
+                  ) as Player[];
+              }
+            );
+          });
+
+          setTeams(teamsWithUpdatedPlayers);
+
+          // Filter out players that are already in teams
+          const assignedPlayerIds = new Set();
+          Object.values(teamsWithUpdatedPlayers).forEach((team) => {
+            Object.values(team.players).forEach((positionPlayers) => {
+              positionPlayers.forEach((player) => {
+                assignedPlayerIds.add(player.id);
+              });
+            });
+          });
+
+          setAvailablePlayers(
+            appPlayers.filter((player) => !assignedPlayerIds.has(player.id))
+          );
+        } else {
+          // If no stored teams, all players are available
+          setAvailablePlayers(appPlayers);
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error loading players:", error);
+        setIsLoading(false);
+      }
+    }
+
+    if (isClient) {
+      loadPlayers();
+    }
+  }, [isClient, dbInitialized]);
+
+  // Save teams state to localStorage when it changes
   useEffect(() => {
     if (isClient) {
       localStorage.setItem("triatapp-teams", JSON.stringify(teams));
     }
   }, [teams, isClient]);
 
-  const handlePlayerDrop = useCallback(
-    (playerId: string, teamId: "borjas" | "nietos", position: Position) => {
-      // Encontrar al jugador en los disponibles
-      const player = availablePlayers.find((p) => p.id === playerId);
+  // Function to handle player drops on teams
+  const handlePlayerDrop = (
+    playerId: string,
+    teamId: "borjas" | "nietos",
+    position: Position
+  ) => {
+    // Find the player from available players or teams
+    let player: Player | undefined = availablePlayers.find(
+      (p) => p.id === playerId
+    );
 
-      // Verificar si el jugador ya está en un equipo
-      if (player?.team) {
-        // Encontrar el equipo actual del jugador
-        const currentTeam = teams.find((t) => t.id === player.team);
-        if (currentTeam) {
-          // Eliminar al jugador de su posición actual
-          Object.keys(currentTeam.players).forEach((pos) => {
-            const positionKey = pos as Position;
-            currentTeam.players[positionKey] = currentTeam.players[
-              positionKey
-            ].filter((p) => p.id !== playerId);
-          });
-        }
-      }
-
-      if (player) {
-        // Actualizar el atributo team del jugador
-        player.team = teamId;
-
-        // Añadir el jugador al nuevo equipo y posición
-        const newTeam = teams.find((t) => t.id === teamId);
-        if (newTeam) {
-          const updatedPlayer = { ...player, position };
-
-          // Asegurarse de que la posición existe en el equipo
-          if (!newTeam.players[position]) {
-            newTeam.players[position] = [];
-          }
-
-          newTeam.players[position].push(updatedPlayer);
-        }
-
-        // Actualizar los jugadores disponibles
-        setAvailablePlayers(availablePlayers.filter((p) => p.id !== playerId));
-
-        // Actualizar los equipos
-        setTeams([...teams]);
-      }
-    },
-    [availablePlayers, teams]
-  );
-
-  const handleRemovePlayer = useCallback(
-    (playerOrId: Player | string) => {
-      // Obtener el ID del jugador
-      const playerId =
-        typeof playerOrId === "string" ? playerOrId : playerOrId.id;
-
-      // Buscar en qué equipo está el jugador
-      for (const team of teams) {
-        let playerFound = false;
-
-        // Buscar en cada posición del equipo
-        Object.keys(team.players).forEach((positionKey) => {
-          const position = positionKey as Position;
-          const playerIndex = team.players[position].findIndex(
+    if (!player) {
+      // If not in availablePlayers, look in teams
+      for (const tId of ["borjas", "nietos"] as const) {
+        for (const pos of Object.keys(teams[tId].players) as Position[]) {
+          const foundPlayer = teams[tId].players[pos].find(
             (p) => p.id === playerId
           );
-
-          if (playerIndex !== -1) {
-            // Obtener el jugador
-            const player = team.players[position][playerIndex];
-
-            // Eliminar al jugador de su posición
-            team.players[position].splice(playerIndex, 1);
-            playerFound = true;
-
-            // Resetear el atributo team del jugador
-            player.team = null;
-
-            // Añadir de nuevo a disponibles
-            setAvailablePlayers([...availablePlayers, player]);
+          if (foundPlayer) {
+            player = foundPlayer;
+            break;
           }
-        });
-
-        if (playerFound) break;
+        }
+        if (player) break;
       }
-
-      // Actualizar los equipos
-      setTeams([...teams]);
-    },
-    [availablePlayers, teams]
-  );
-
-  const handleReset = useCallback(() => {
-    setAvailablePlayers(SAMPLE_PLAYERS.map((p) => ({ ...p, team: null })));
-    setTeams(INITIAL_TEAMS);
-
-    if (isClient) {
-      localStorage.removeItem("triatapp-availablePlayers");
-      localStorage.removeItem("triatapp-teams");
     }
-  }, [isClient]);
+
+    // If player not found, exit function
+    if (!player) return;
+
+    // Step 1: Create a new teams object to avoid direct mutation
+    const newTeams = JSON.parse(JSON.stringify(teams)) as typeof teams;
+
+    // Step 2: Remove player from available players if they're there
+    if (!player.team) {
+      setAvailablePlayers((prev) => prev.filter((p) => p.id !== playerId));
+    }
+
+    // Step 3: Remove player from any team and position they might be in
+    for (const tId of ["borjas", "nietos"] as const) {
+      for (const pos of Object.keys(newTeams[tId].players) as Position[]) {
+        newTeams[tId].players[pos] = newTeams[tId].players[pos].filter(
+          (p) => p.id !== playerId
+        );
+      }
+    }
+
+    // Step 4: Add player to the new team and position
+    const updatedPlayer = {
+      ...player,
+      team: teamId,
+    };
+
+    newTeams[teamId].players[position].push(updatedPlayer);
+
+    // Step 5: Update state with the new teams object
+    setTeams(newTeams);
+  };
+
+  // Remove player from team, return to available players
+  const handleRemovePlayer = (playerId: string) => {
+    // Find which team the player is on
+    let playerTeam: string | null = null;
+    let playerPosition: Position | null = null;
+    let player: Player | null = null;
+
+    // Search through teams
+    Object.keys(teams).forEach((teamId) => {
+      const team = teams[teamId];
+      Object.keys(team.players).forEach((pos) => {
+        const playerIndex = team.players[pos as Position].findIndex(
+          (p) => p.id === playerId
+        );
+        if (playerIndex >= 0) {
+          playerTeam = teamId;
+          playerPosition = pos as Position;
+          player = team.players[pos as Position][playerIndex];
+        }
+      });
+    });
+
+    if (playerTeam && playerPosition && player) {
+      // Remove from team
+      setTeams((prevTeams) => {
+        const newTeams = { ...prevTeams };
+        newTeams[playerTeam as string].players[playerPosition as Position] =
+          newTeams[playerTeam as string].players[
+            playerPosition as Position
+          ].filter((p) => p.id !== playerId);
+        return newTeams;
+      });
+
+      // Add to available players
+      setAvailablePlayers((prev) => [
+        ...prev,
+        { ...player, team: null } as Player,
+      ]);
+    }
+  };
+
+  // Reset everything
+  const handleReset = () => {
+    setTeams(DEFAULT_TEAMS);
+    localStorage.removeItem("triatapp-teams");
+    // Reload players from database
+    setDbInitialized((prev) => !prev); // Toggle to trigger reload
+  };
+
+  const backend = isMobileView ? TouchBackend : HTML5Backend;
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black bg-field-pattern p-2 sm:p-4 md:p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col justify-between mb-4 sm:mb-6 md:flex-row">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2 md:mb-0 text-center md:text-left drop-shadow-lg">
-              TriatAPP
+    <>
+      <Head>
+        <title>Futbol Triaje</title>
+        <meta
+          name="description"
+          content="Aplicación para organizar equipos de fútbol"
+        />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+      <main className="min-h-screen bg-field-grass bg-cover bg-center">
+        <div className="container mx-auto px-4 py-6 relative">
+          <header className="mb-6 text-center">
+            <h1 className="text-3xl font-bold text-white drop-shadow-lg">
+              Triaje Fútbol
             </h1>
-            <button
-              onClick={handleReset}
-              className="bg-gray-800/80 hover:bg-gray-700/80 text-white py-1 sm:py-2 px-3 sm:px-4 rounded-md shadow-md transition-colors backdrop-blur-sm text-sm sm:text-base"
-            >
-              Reiniciar TriatAPP
-            </button>
-          </div>
+            <p className="text-white/80">
+              Organiza los equipos de manera equilibrada
+            </p>
+          </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-            <div className="md:col-span-1 order-3 md:order-1">
-              <AvailablePlayers
-                players={availablePlayers}
-                onPlayerDrop={handleRemovePlayer}
-                isMobileView={isMobileDevice}
-              />
+          {isLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="bg-white/90 p-6 rounded-lg shadow-lg text-center">
+                <p className="text-xl mb-4">Cargando jugadores...</p>
+                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              </div>
             </div>
+          ) : (
+            <DndProvider backend={backend}>
+              <div className="lg:flex gap-6">
+                <div className="w-full lg:w-1/4 mb-6 lg:mb-0">
+                  <AvailablePlayers
+                    players={availablePlayers}
+                    isMobileView={isMobileView}
+                  />
 
-            <div className="md:col-span-1 order-1 md:order-2">
-              <TeamContainer
-                team={teams[0]}
-                onPlayerDrop={handlePlayerDrop}
-                isMobileView={isMobileDevice}
-                availablePlayers={availablePlayers}
-              />
-            </div>
+                  <div className="bg-black/70 backdrop-blur-sm rounded-xl p-4 mt-4">
+                    <h3 className="text-xl font-semibold mb-4 text-white">
+                      Acciones
+                    </h3>
+                    <div className="flex flex-col gap-3">
+                      <button
+                        onClick={handleReset}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg text-sm font-medium"
+                      >
+                        Reiniciar Equipos
+                      </button>
+                      {/* <button
+                        onClick={handleInitializeDb}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium"
+                      >
+                        Inicializar Base de Datos
+                      </button> */}
+                      <Link
+                        href="/players"
+                        className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium text-center"
+                      >
+                        Gestionar Jugadores
+                      </Link>
+                    </div>
+                  </div>
+                </div>
 
-            <div className="md:col-span-1 order-2 md:order-3">
-              <TeamContainer
-                team={teams[1]}
-                onPlayerDrop={handlePlayerDrop}
-                isMobileView={isMobileDevice}
-                availablePlayers={availablePlayers}
-              />
-            </div>
-          </div>
+                <div className="w-full lg:w-3/4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <TeamContainer
+                    team={teams.borjas}
+                    onPlayerDrop={handlePlayerDrop}
+                    onPlayerRemove={handleRemovePlayer}
+                    isMobileView={isMobileView}
+                    availablePlayers={availablePlayers}
+                  />
+                  <TeamContainer
+                    team={teams.nietos}
+                    onPlayerDrop={handlePlayerDrop}
+                    onPlayerRemove={handleRemovePlayer}
+                    isMobileView={isMobileView}
+                    availablePlayers={availablePlayers}
+                  />
+                </div>
+              </div>
+            </DndProvider>
+          )}
         </div>
-      </div>
-    </DndProvider>
+      </main>
+    </>
   );
 }
