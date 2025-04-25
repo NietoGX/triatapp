@@ -111,18 +111,17 @@ export const TeamContainer = ({
   // Componente jugador con drag habilitado
   const DraggablePlayerCard = ({ player }: { player: AppPlayer }) => {
     const divRef = useRef<HTMLDivElement>(null);
-    const [collected, connectDrag] = useDrag<
-      AppPlayer,
-      unknown,
-      { isDragging: boolean }
-    >({
-      type: "player",
-      item: player,
-      collect: (monitor) => ({
-        isDragging: !!monitor.isDragging(),
+    const [{ isDragging }, connectDrag] = useDrag(
+      () => ({
+        type: "PLAYER",
+        item: { id: player.id },
+        collect: (monitor) => ({
+          isDragging: !!monitor.isDragging(),
+        }),
+        canDrag: !isDropDisabled,
       }),
-      canDrag: !isDropDisabled,
-    });
+      [player.id, isDropDisabled]
+    );
 
     // Connect the drag ref to our div ref
     useEffect(() => {
@@ -131,7 +130,6 @@ export const TeamContainer = ({
       }
     }, [connectDrag]);
 
-    const isDragging = collected.isDragging;
     const disabledClass = isDropDisabled ? "opacity-70" : "";
 
     return (
@@ -285,7 +283,7 @@ export const TeamContainer = ({
                   </p>
                 ) : (
                   <p className="text-gray-400 text-xs text-center px-2">
-                    Arrastra jugador aquí
+                    Coloca un jugador aquí
                   </p>
                 )}
               </div>
@@ -519,7 +517,7 @@ export const TeamContainer = ({
           <div className="fixed inset-0 bg-black/80 z-50 flex flex-col overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-white/10">
               <h4 className="text-white text-lg font-bold">
-                {getPositionName(selectedPosition)} - Selecciona un jugador
+                {getPositionName(selectedPosition)} - Elige un jugador
               </h4>
               <button
                 onClick={() => setSelectedPosition(null)}

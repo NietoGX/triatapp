@@ -54,11 +54,9 @@ export const AvailablePlayers = ({
   // Componente de tarjeta de jugador arrastrable
   const DraggablePlayerCard = ({
     player,
-    isMobileView,
     isDragDisabled,
   }: {
     player: AppPlayer;
-    isMobileView: boolean;
     isDragDisabled?: boolean;
   }) => {
     const divRef = useRef<HTMLDivElement>(null);
@@ -259,7 +257,6 @@ export const AvailablePlayers = ({
                   <DraggablePlayerCard
                     key={player.id}
                     player={player}
-                    isMobileView={isMobileView}
                     isDragDisabled={isDragDisabled}
                   />
                 ))}
