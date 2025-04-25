@@ -1,4 +1,5 @@
 import type { Player } from "./database/types";
+import type { TeamLineup, PlayerPosition } from "./database/types";
 
 // Base API URL
 const API_URL = "/api";
@@ -75,6 +76,66 @@ export const playerApi = {
   initialize: async (): Promise<{ success: boolean; message: string }> => {
     return fetchAPI<{ success: boolean; message: string }>(
       "/players/initialize",
+      {
+        method: "POST",
+      }
+    );
+  },
+};
+
+// Lineup API functions
+export const lineupApi = {
+  // Get all lineups
+  getAll: async (): Promise<TeamLineup> => {
+    return fetchAPI<TeamLineup>("/lineups");
+  },
+
+  // Save player position in a team
+  savePosition: async (
+    teamId: string,
+    playerId: string,
+    position: PlayerPosition,
+    order: number = 0
+  ): Promise<{ success: boolean }> => {
+    return fetchAPI<{ success: boolean }>("/lineups/save", {
+      method: "POST",
+      body: JSON.stringify({
+        teamId,
+        playerId,
+        position,
+        order,
+      }),
+    });
+  },
+
+  // Remove player from a team
+  removePlayer: async (
+    teamId: string,
+    playerId: string
+  ): Promise<{ success: boolean }> => {
+    return fetchAPI<{ success: boolean }>("/lineups/remove", {
+      method: "POST",
+      body: JSON.stringify({
+        teamId,
+        playerId,
+      }),
+    });
+  },
+
+  // Reset all team lineups
+  reset: async (): Promise<{ success: boolean }> => {
+    return fetchAPI<{ success: boolean }>("/lineups/reset", {
+      method: "POST",
+    });
+  },
+};
+
+// Team API functions
+export const teamApi = {
+  // Initialize teams in the database
+  initialize: async (): Promise<{ success: boolean; message: string }> => {
+    return fetchAPI<{ success: boolean; message: string }>(
+      "/teams/initialize",
       {
         method: "POST",
       }

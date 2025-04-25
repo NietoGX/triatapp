@@ -8,8 +8,8 @@ import Link from "next/link";
 
 import AvailablePlayers from "@/components/AvailablePlayers";
 import TeamContainer from "@/components/TeamContainer";
-import { Player, Team, Position } from "@/types";
-import { playerApi } from "@/lib/api";
+import { AppPlayer, PlayerPosition, Team } from "@/types";
+import { playerApi, lineupApi, teamApi } from "@/lib/api";
 
 // Default empty teams structure
 const DEFAULT_TEAMS: { [key: string]: Team } = {
@@ -47,9 +47,10 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [dbInitialized, setDbInitialized] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   // Players and teams state
-  const [availablePlayers, setAvailablePlayers] = useState<Player[]>([]);
+  const [availablePlayers, setAvailablePlayers] = useState<AppPlayer[]>([]);
   const [teams, setTeams] = useState<{ [key: string]: Team }>(DEFAULT_TEAMS);
 
   useEffect(() => {
@@ -57,19 +58,21 @@ export default function Home() {
     setIsMobileView(isMobile);
   }, []);
 
-  // Load players from database
+  // Load players and lineups from database
   useEffect(() => {
-    async function loadPlayers() {
+    async function loadData() {
       try {
         setIsLoading(true);
+
+        // 1. Cargar los jugadores
         const dbPlayers = await playerApi.getAll();
 
-        // Map database players to app players format
-        const appPlayers: Player[] = dbPlayers.map((p) => ({
+        // 2. Mapear jugadores a formato de la aplicación
+        const appPlayers: AppPlayer[] = dbPlayers.map((p) => ({
           id: p.id,
           name: p.name,
           rating: p.rating,
-          position: p.position as Position | null,
+          position: p.position as PlayerPosition | null,
           team: null,
           stats: {
             goals: p.goals,
@@ -81,96 +84,64 @@ export default function Home() {
           nickname: p.nickname || undefined,
         }));
 
-        // Restore team assignments from localStorage if it exists
-        const storedTeamsData = localStorage.getItem("triatapp-teams");
-        if (storedTeamsData) {
-          const storedTeams = JSON.parse(storedTeamsData) as {
-            [key: string]: Team;
-          };
+        // 3. Cargar las alineaciones desde la base de datos
+        try {
+          const lineups = await lineupApi.getAll();
 
-          // We need to merge the stored team assignments with the fresh player data
-          const teamsWithUpdatedPlayers = { ...storedTeams };
+          if (lineups && (lineups.borjas || lineups.nietos)) {
+            setTeams(lineups);
 
-          // For each position in each team, update player data with fresh data from DB
-          Object.keys(teamsWithUpdatedPlayers).forEach((teamId) => {
-            Object.keys(teamsWithUpdatedPlayers[teamId].players).forEach(
-              (pos) => {
-                const position = pos as Position;
-                teamsWithUpdatedPlayers[teamId].players[position] =
-                  teamsWithUpdatedPlayers[teamId].players[position].map(
-                    (teamPlayer) => {
-                      // Find the updated player data
-                      const updatedPlayer = appPlayers.find(
-                        (p) => p.id === teamPlayer.id
-                      );
-                      if (updatedPlayer) {
-                        // Return player with team assignment but updated stats
-                        return {
-                          ...updatedPlayer,
-                          team: teamId as "borjas" | "nietos",
-                        };
-                      }
-                      return teamPlayer;
-                    }
-                  ) as Player[];
-              }
-            );
-          });
+            // Filtrar jugadores disponibles (los que no están en ningún equipo)
+            const assignedPlayerIds = new Set<string>();
 
-          setTeams(teamsWithUpdatedPlayers);
-
-          // Filter out players that are already in teams
-          const assignedPlayerIds = new Set();
-          Object.values(teamsWithUpdatedPlayers).forEach((team) => {
-            Object.values(team.players).forEach((positionPlayers) => {
-              positionPlayers.forEach((player) => {
-                assignedPlayerIds.add(player.id);
+            Object.values(lineups).forEach((team) => {
+              Object.values(team.players).forEach((positionPlayers) => {
+                positionPlayers.forEach((player) => {
+                  assignedPlayerIds.add(player.id);
+                });
               });
             });
-          });
 
-          setAvailablePlayers(
-            appPlayers.filter((player) => !assignedPlayerIds.has(player.id))
-          );
-        } else {
-          // If no stored teams, all players are available
+            setAvailablePlayers(
+              appPlayers.filter((player) => !assignedPlayerIds.has(player.id))
+            );
+          } else {
+            // Si no hay alineaciones en la BD, todos los jugadores están disponibles
+            setAvailablePlayers(appPlayers);
+          }
+        } catch (error) {
+          console.error("Error al cargar alineaciones:", error);
+          // Si falla la carga de alineaciones, mostrar todos los jugadores como disponibles
           setAvailablePlayers(appPlayers);
         }
 
         setIsLoading(false);
       } catch (error) {
-        console.error("Error loading players:", error);
+        console.error("Error al cargar datos:", error);
         setIsLoading(false);
       }
     }
 
     if (isClient) {
-      loadPlayers();
+      loadData();
     }
   }, [isClient, dbInitialized]);
 
-  // Save teams state to localStorage when it changes
-  useEffect(() => {
-    if (isClient) {
-      localStorage.setItem("triatapp-teams", JSON.stringify(teams));
-    }
-  }, [teams, isClient]);
-
   // Function to handle player drops on teams
-  const handlePlayerDrop = (
+  const handlePlayerDrop = async (
     playerId: string,
-    teamId: "borjas" | "nietos",
-    position: Position
+    teamId: string,
+    position: PlayerPosition
   ) => {
     // Find the player from available players or teams
-    let player: Player | undefined = availablePlayers.find(
+    let player: AppPlayer | undefined = availablePlayers.find(
       (p) => p.id === playerId
     );
 
     if (!player) {
       // If not in availablePlayers, look in teams
       for (const tId of ["borjas", "nietos"] as const) {
-        for (const pos of Object.keys(teams[tId].players) as Position[]) {
+        for (const pos of Object.keys(teams[tId].players) as PlayerPosition[]) {
           const foundPlayer = teams[tId].players[pos].find(
             (p) => p.id === playerId
           );
@@ -196,7 +167,9 @@ export default function Home() {
 
     // Step 3: Remove player from any team and position they might be in
     for (const tId of ["borjas", "nietos"] as const) {
-      for (const pos of Object.keys(newTeams[tId].players) as Position[]) {
+      for (const pos of Object.keys(
+        newTeams[tId].players
+      ) as PlayerPosition[]) {
         newTeams[tId].players[pos] = newTeams[tId].players[pos].filter(
           (p) => p.id !== playerId
         );
@@ -213,26 +186,38 @@ export default function Home() {
 
     // Step 5: Update state with the new teams object
     setTeams(newTeams);
+
+    // Step 6: Guardar en la base de datos
+    try {
+      // Determinar el orden (por ahora siempre al final)
+      const order = newTeams[teamId].players[position].length - 1;
+
+      // Guardar la posición en la base de datos
+      await lineupApi.savePosition(teamId, playerId, position, order);
+    } catch (error) {
+      console.error("Error al guardar posición en base de datos:", error);
+      // Podría implementarse un rollback o notificación al usuario
+    }
   };
 
   // Remove player from team, return to available players
-  const handleRemovePlayer = (playerId: string) => {
+  const handleRemovePlayer = async (playerId: string) => {
     // Find which team the player is on
     let playerTeam: string | null = null;
-    let playerPosition: Position | null = null;
-    let player: Player | null = null;
+    let playerPosition: PlayerPosition | null = null;
+    let player: AppPlayer | null = null;
 
     // Search through teams
     Object.keys(teams).forEach((teamId) => {
       const team = teams[teamId];
       Object.keys(team.players).forEach((pos) => {
-        const playerIndex = team.players[pos as Position].findIndex(
+        const playerIndex = team.players[pos as PlayerPosition].findIndex(
           (p) => p.id === playerId
         );
         if (playerIndex >= 0) {
           playerTeam = teamId;
-          playerPosition = pos as Position;
-          player = team.players[pos as Position][playerIndex];
+          playerPosition = pos as PlayerPosition;
+          player = team.players[pos as PlayerPosition][playerIndex];
         }
       });
     });
@@ -241,27 +226,85 @@ export default function Home() {
       // Remove from team
       setTeams((prevTeams) => {
         const newTeams = { ...prevTeams };
-        newTeams[playerTeam as string].players[playerPosition as Position] =
-          newTeams[playerTeam as string].players[
-            playerPosition as Position
-          ].filter((p) => p.id !== playerId);
+        newTeams[playerTeam as string].players[
+          playerPosition as PlayerPosition
+        ] = newTeams[playerTeam as string].players[
+          playerPosition as PlayerPosition
+        ].filter((p) => p.id !== playerId);
         return newTeams;
       });
 
       // Add to available players
       setAvailablePlayers((prev) => [
         ...prev,
-        { ...player, team: null } as Player,
+        { ...player, team: null } as AppPlayer,
       ]);
+
+      // Eliminar de la base de datos
+      try {
+        await lineupApi.removePlayer(playerTeam, playerId);
+      } catch (error) {
+        console.error("Error al eliminar jugador de la base de datos:", error);
+      }
     }
   };
 
   // Reset everything
-  const handleReset = () => {
+  const handleReset = async () => {
+    // Resetear el estado
     setTeams(DEFAULT_TEAMS);
-    localStorage.removeItem("triatapp-teams");
-    // Reload players from database
-    setDbInitialized((prev) => !prev); // Toggle to trigger reload
+
+    // Recargar todos los jugadores como disponibles
+    try {
+      const dbPlayers = await playerApi.getAll();
+
+      const appPlayers: AppPlayer[] = dbPlayers.map((p) => ({
+        id: p.id,
+        name: p.name,
+        rating: p.rating,
+        position: p.position as PlayerPosition | null,
+        team: null,
+        stats: {
+          goals: p.goals,
+          assists: p.assists,
+          saves: p.saves,
+          goalsSaved: p.goals_saved,
+        },
+        number: p.number || undefined,
+        nickname: p.nickname || undefined,
+      }));
+
+      setAvailablePlayers(appPlayers);
+
+      // Resetear alineaciones en la base de datos
+      await lineupApi.reset();
+    } catch (error) {
+      console.error("Error al resetear alineaciones:", error);
+    }
+
+    // Toggle para forzar recarga
+    setDbInitialized((prev) => !prev);
+  };
+
+  // Inicializar la base de datos
+  const handleInitializeDb = async () => {
+    try {
+      setIsInitializing(true);
+
+      // Inicializar equipos
+      await teamApi.initialize();
+
+      // Inicializar jugadores de ejemplo
+      await playerApi.initialize();
+
+      // Recargar los datos
+      setDbInitialized(!dbInitialized);
+
+      setIsInitializing(false);
+    } catch (error) {
+      console.error("Error al inicializar la base de datos:", error);
+      setIsInitializing(false);
+    }
   };
 
   const backend = isMobileView ? TouchBackend : HTML5Backend;
@@ -281,8 +324,11 @@ export default function Home() {
         <div className="container mx-auto px-4 py-6 relative backdrop-blur-sm">
           <header className="mb-6 text-center">
             <h1 className="text-3xl font-bold text-white drop-shadow-lg">
-              TriatApp
+              Triaje Fútbol
             </h1>
+            <p className="text-white/80">
+              Organiza los equipos de manera equilibrada
+            </p>
           </header>
 
           {isLoading ? (
@@ -306,12 +352,15 @@ export default function Home() {
                   >
                     Reiniciar Equipos
                   </button>
-                  {/* <button
+                  <button
                     onClick={handleInitializeDb}
-                    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium"
+                    disabled={isInitializing}
+                    className="bg-blue-600/90 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Inicializar Base de Datos
-                  </button> */}
+                    {isInitializing
+                      ? "Inicializando..."
+                      : "Inicializar Base de Datos"}
+                  </button>
                   <Link
                     href="/players"
                     className="bg-green-600/90 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium text-center transition-all duration-200 shadow-md hover:shadow-lg"

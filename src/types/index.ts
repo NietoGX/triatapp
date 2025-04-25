@@ -1,12 +1,12 @@
-export type Position = "GK" | "CL" | "CR" | "ML" | "MR" | "ST" | "SUB";
+export type PlayerPosition = "GK" | "CL" | "CR" | "ML" | "MR" | "ST" | "SUB";
 
-export type Player = {
+export type AppPlayer = {
   id: string;
   name: string;
   rating: number;
-  position?: Position | null;
-  team?: "borjas" | "nietos" | null;
-  stats?: {
+  position: PlayerPosition | null;
+  team: string | null;
+  stats: {
     goals: number;
     assists: number;
     saves: number;
@@ -17,15 +17,17 @@ export type Player = {
 };
 
 export type Team = {
-  id: "borjas" | "nietos";
+  id: string;
   name: string;
   players: {
-    GK: Player[]; // Portero
-    CL: Player[]; // Central Izquierda
-    CR: Player[]; // Central Derecha
-    ML: Player[]; // Medio Izquierda
-    MR: Player[]; // Medio Derecha
-    ST: Player[]; // Delantero Pichichi
-    SUB: Player[]; // Suplentes
+    [key in PlayerPosition]: AppPlayer[];
   };
 };
+
+export type TeamLineup = {
+  [key: string]: Team;
+};
+
+// Tipos antiguos mantenidos para compatibilidad
+export type Position = PlayerPosition;
+export type Player = AppPlayer;

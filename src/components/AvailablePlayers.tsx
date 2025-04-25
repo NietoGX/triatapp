@@ -1,10 +1,10 @@
 import { useDrag } from "react-dnd";
-import { Player, Position } from "@/types";
+import { AppPlayer, PlayerPosition } from "@/types";
 import { useRef, useEffect, useState } from "react";
 
 interface AvailablePlayersProps {
-  players: Player[];
-  onPlayerDrop?: (player: Player) => void;
+  players: AppPlayer[];
+  onPlayerDrop?: (player: AppPlayer) => void;
   isMobileView?: boolean;
 }
 
@@ -13,10 +13,10 @@ export const AvailablePlayers = ({
   onPlayerDrop,
   isMobileView = false,
 }: AvailablePlayersProps) => {
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<AppPlayer | null>(null);
 
   // Función para obtener el nombre de posición en español
-  const getPositionName = (position: Position) => {
+  const getPositionName = (position: PlayerPosition) => {
     switch (position) {
       case "GK":
         return "Portero";
@@ -37,7 +37,7 @@ export const AvailablePlayers = ({
     }
   };
 
-  const handlePlayerClick = (player: Player, e: React.MouseEvent) => {
+  const handlePlayerClick = (player: AppPlayer, e: React.MouseEvent) => {
     e.stopPropagation();
 
     if (isMobileView && onPlayerDrop) {
@@ -50,10 +50,10 @@ export const AvailablePlayers = ({
   };
 
   // Componente de tarjeta de jugador arrastrable
-  const DraggablePlayerCard = ({ player }: { player: Player }) => {
+  const DraggablePlayerCard = ({ player }: { player: AppPlayer }) => {
     const divRef = useRef<HTMLDivElement>(null);
     const [{ isDragging }, connectDrag] = useDrag<
-      Player,
+      AppPlayer,
       unknown,
       { isDragging: boolean }
     >({

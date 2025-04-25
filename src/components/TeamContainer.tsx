@@ -1,17 +1,17 @@
 import { useDrag, useDrop } from "react-dnd";
-import { Player, Position, Team } from "@/types";
+import { AppPlayer, PlayerPosition, Team } from "@/types";
 import { useRef, useEffect, useState } from "react";
 
 interface TeamContainerProps {
   team: Team;
   onPlayerDrop: (
     playerId: string,
-    teamId: "borjas" | "nietos",
-    position: Position
+    teamId: string,
+    position: PlayerPosition
   ) => void;
   onPlayerRemove: (playerId: string) => void;
   isMobileView?: boolean;
-  availablePlayers?: Player[];
+  availablePlayers?: AppPlayer[];
 }
 
 export const TeamContainer = ({
@@ -21,14 +21,21 @@ export const TeamContainer = ({
   isMobileView = false,
   availablePlayers = [],
 }: TeamContainerProps) => {
-  const [selectedPosition, setSelectedPosition] = useState<Position | null>(
-    null
-  );
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [selectedPosition, setSelectedPosition] =
+    useState<PlayerPosition | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<AppPlayer | null>(null);
 
   // Asegurarnos de que todas las posiciones existen en el objeto team.players
   useEffect(() => {
-    const positions: Position[] = ["GK", "CL", "CR", "ML", "MR", "ST", "SUB"];
+    const positions: PlayerPosition[] = [
+      "GK",
+      "CL",
+      "CR",
+      "ML",
+      "MR",
+      "ST",
+      "SUB",
+    ];
     positions.forEach((pos) => {
       if (!team.players[pos]) {
         team.players[pos] = [];
@@ -36,7 +43,7 @@ export const TeamContainer = ({
     });
   }, [team]);
 
-  const getPositionColor = (position: Position) => {
+  const getPositionColor = (position: PlayerPosition) => {
     switch (position) {
       case "GK":
         return "bg-yellow-400/80";
@@ -55,7 +62,7 @@ export const TeamContainer = ({
     }
   };
 
-  const getPositionName = (position: Position) => {
+  const getPositionName = (position: PlayerPosition) => {
     switch (position) {
       case "GK":
         return "Portero";
@@ -76,7 +83,7 @@ export const TeamContainer = ({
     }
   };
 
-  const handlePositionClick = (position: Position) => {
+  const handlePositionClick = (position: PlayerPosition) => {
     if (isMobileView) {
       // Si ya está seleccionada, la deseleccionamos
       if (selectedPosition === position) {
@@ -87,23 +94,23 @@ export const TeamContainer = ({
     }
   };
 
-  const handlePlayerSelect = (player: Player, position: Position) => {
+  const handlePlayerSelect = (player: AppPlayer, position: PlayerPosition) => {
     if (isMobileView && selectedPosition) {
       onPlayerDrop(player.id, team.id, position);
       setSelectedPosition(null);
     }
   };
 
-  const handlePlayerClick = (player: Player, e: React.MouseEvent) => {
+  const handlePlayerClick = (player: AppPlayer, e: React.MouseEvent) => {
     e.stopPropagation(); // Evitar que se active el onClick del PositionDropZone
     setSelectedPlayer(player);
   };
 
   // Componente jugador con drag habilitado
-  const DraggablePlayerCard = ({ player }: { player: Player }) => {
+  const DraggablePlayerCard = ({ player }: { player: AppPlayer }) => {
     const divRef = useRef<HTMLDivElement>(null);
     const [collected, connectDrag] = useDrag<
-      Player,
+      AppPlayer,
       unknown,
       { isDragging: boolean }
     >({
@@ -180,7 +187,7 @@ export const TeamContainer = ({
     maxPlayers,
     className = "",
   }: {
-    position: Position;
+    position: PlayerPosition;
     maxPlayers: number;
     className?: string;
   }) => {
@@ -202,8 +209,8 @@ export const TeamContainer = ({
     );
 
     const [{ isOver, canDrop }, drop] = useDrop<
-      Player,
-      { team: string; position: Position },
+      AppPlayer,
+      { team: string; position: PlayerPosition },
       { isOver: boolean; canDrop: boolean }
     >({
       accept: "player",
