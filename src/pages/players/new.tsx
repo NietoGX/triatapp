@@ -72,9 +72,9 @@ export default function NewPlayerPage() {
 
       await playerApi.create(playerData);
       router.push("/players");
-    } catch (err: any) {
+    } catch (err: Error | unknown) {
       console.error("Error creating player:", err);
-      setError(err.message || "Failed to create player");
+      setError(err instanceof Error ? err.message : "Failed to create player");
       setLoading(false);
     }
   };
