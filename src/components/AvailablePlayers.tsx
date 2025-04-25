@@ -1,5 +1,6 @@
 import { useDrag } from "react-dnd";
 import { Player } from "@/types";
+import { useRef, useEffect } from "react";
 
 interface AvailablePlayersProps {
   players: Player[];
@@ -14,7 +15,12 @@ export const AvailablePlayers = ({
 }: AvailablePlayersProps) => {
   // Componente de tarjeta de jugador arrastrable
   const DraggablePlayerCard = ({ player }: { player: Player }) => {
-    const [collected, drag] = useDrag({
+    const divRef = useRef<HTMLDivElement>(null);
+    const [{ isDragging }, connectDrag] = useDrag<
+      Player,
+      unknown,
+      { isDragging: boolean }
+    >({
       type: "player",
       item: player,
       collect: (monitor) => ({
@@ -23,11 +29,16 @@ export const AvailablePlayers = ({
       canDrag: !isMobileView, // Solo permitir arrastrar en desktop
     });
 
-    const isDragging = collected.isDragging;
+    // Connect the drag ref to our div ref
+    useEffect(() => {
+      if (divRef.current) {
+        connectDrag(divRef);
+      }
+    }, [connectDrag]);
 
     return (
       <div
-        ref={drag}
+        ref={divRef}
         onClick={() => isMobileView && onPlayerDrop && onPlayerDrop(player)}
         className={`w-full bg-yellow-500 rounded-lg overflow-hidden shadow-md transition-all duration-200 hover:bg-yellow-400 
           ${isDragging ? "opacity-50" : "opacity-100"}

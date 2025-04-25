@@ -93,7 +93,12 @@ export const TeamContainer = ({
 
   // Componente jugador con drag habilitado
   const DraggablePlayerCard = ({ player }: { player: Player }) => {
-    const [collected, drag] = useDrag({
+    const divRef = useRef<HTMLDivElement>(null);
+    const [collected, connectDrag] = useDrag<
+      Player,
+      unknown,
+      { isDragging: boolean }
+    >({
       type: "player",
       item: player,
       collect: (monitor) => ({
@@ -101,11 +106,18 @@ export const TeamContainer = ({
       }),
     });
 
+    // Connect the drag ref to our div ref
+    useEffect(() => {
+      if (divRef.current) {
+        connectDrag(divRef);
+      }
+    }, [connectDrag]);
+
     const isDragging = collected.isDragging;
 
     return (
       <div
-        ref={drag}
+        ref={divRef}
         className={`${
           team.id === "borjas" ? "bg-red-600" : "bg-purple-600"
         } rounded-lg shadow-md p-2 sm:p-3 flex flex-col items-center min-w-[90px] sm:min-w-[100px] ${
@@ -138,7 +150,11 @@ export const TeamContainer = ({
       team.players[position] = [];
     }
 
-    const [collected, drop] = useDrop({
+    const [collected, drop] = useDrop<
+      Player,
+      { team: string; position: Position },
+      { isOver: boolean; canDrop: boolean }
+    >({
       accept: "player",
       drop: (item: Player) => {
         onPlayerDrop(item.id, team.id, position);
