@@ -8,8 +8,10 @@ import Link from "next/link";
 
 import AvailablePlayers from "@/components/AvailablePlayers";
 import TeamContainer from "@/components/TeamContainer";
+import DraftSystem from "@/components/DraftSystem";
 import { AppPlayer, PlayerPosition, Team } from "@/types";
-import { playerApi, lineupApi, teamApi } from "@/lib/api";
+import { playerApi, lineupApi, teamApi, draftApi } from "@/lib/api";
+import { DraftState } from "@/lib/database/types";
 
 // Default empty teams structure
 const DEFAULT_TEAMS: { [key: string]: Team } = {
@@ -48,6 +50,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [dbInitialized, setDbInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [showDraftSystem, setShowDraftSystem] = useState(false);
+  const [isDraftActive, setIsDraftActive] = useState(false);
 
   // Players and teams state
   const [availablePlayers, setAvailablePlayers] = useState<AppPlayer[]>([]);
@@ -115,6 +119,19 @@ export default function Home() {
           setAvailablePlayers(appPlayers);
         }
 
+        // 4. Verificar el estado del triaje
+        try {
+          const draftState = await draftApi.getState();
+          setIsDraftActive(draftState.is_active);
+
+          // Si el triaje está activo, mostrar automáticamente el panel de triaje
+          if (draftState.is_active) {
+            setShowDraftSystem(true);
+          }
+        } catch (error) {
+          console.error("Error al verificar estado del triaje:", error);
+        }
+
         setIsLoading(false);
       } catch (error) {
         console.error("Error al cargar datos:", error);
@@ -133,6 +150,14 @@ export default function Home() {
     teamId: string,
     position: PlayerPosition
   ) => {
+    // Si el triaje está activo, no permitir añadir jugadores manualmente
+    if (isDraftActive) {
+      console.warn(
+        "No se pueden añadir jugadores manualmente durante el triaje activo."
+      );
+      return;
+    }
+
     // Find the player from available players or teams
     let player: AppPlayer | undefined = availablePlayers.find(
       (p) => p.id === playerId
@@ -202,6 +227,14 @@ export default function Home() {
 
   // Remove player from team, return to available players
   const handleRemovePlayer = async (playerId: string) => {
+    // Si el triaje está activo, no permitir quitar jugadores manualmente
+    if (isDraftActive) {
+      console.warn(
+        "No se pueden quitar jugadores manualmente durante el triaje activo."
+      );
+      return;
+    }
+
     // Find which team the player is on
     let playerTeam: string | null = null;
     let playerPosition: PlayerPosition | null = null;
@@ -251,6 +284,14 @@ export default function Home() {
 
   // Reset everything
   const handleReset = async () => {
+    // Si el triaje está activo, no permitir resetear manualmente
+    if (isDraftActive) {
+      console.warn(
+        "No se pueden resetear los equipos durante el triaje activo."
+      );
+      return;
+    }
+
     // Resetear el estado
     setTeams(DEFAULT_TEAMS);
 
@@ -307,6 +348,26 @@ export default function Home() {
     }
   };
 
+  // Manejar la selección de jugadores en el triaje
+  const handleDraftPlayerPicked = (playerId: string, teamId: string) => {
+    // Buscar al jugador seleccionado
+    const player = availablePlayers.find((p) => p.id === playerId);
+    if (!player) return;
+
+    // Por defecto, colocar en SUB
+    handlePlayerDrop(playerId, teamId, "SUB");
+  };
+
+  // Alternar la visibilidad del sistema de triaje
+  const toggleDraftSystem = () => {
+    setShowDraftSystem(!showDraftSystem);
+  };
+
+  // Actualizar el estado del triaje
+  const handleDraftStateChange = (newState: DraftState) => {
+    setIsDraftActive(newState.is_active);
+  };
+
   const backend = isMobileView ? TouchBackend : HTML5Backend;
 
   return (
@@ -348,13 +409,14 @@ export default function Home() {
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={handleReset}
-                    className="bg-red-600/90 hover:bg-red-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+                    disabled={isDraftActive}
+                    className="bg-red-600/90 hover:bg-red-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Reiniciar Equipos
                   </button>
                   <button
                     onClick={handleInitializeDb}
-                    disabled={isInitializing}
+                    disabled={isInitializing || isDraftActive}
                     className="bg-blue-600/90 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isInitializing
@@ -363,12 +425,45 @@ export default function Home() {
                   </button>
                   <Link
                     href="/players"
-                    className="bg-green-600/90 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium text-center transition-all duration-200 shadow-md hover:shadow-lg"
+                    className={`bg-green-600/90 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium text-center transition-all duration-200 shadow-md hover:shadow-lg ${
+                      isDraftActive ? "opacity-50 pointer-events-none" : ""
+                    }`}
                   >
                     Gestionar Jugadores
                   </Link>
+                  <button
+                    onClick={toggleDraftSystem}
+                    className={`${
+                      showDraftSystem
+                        ? "bg-yellow-500/90 hover:bg-yellow-600"
+                        : "bg-purple-600/90 hover:bg-purple-700"
+                    } text-white py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg`}
+                  >
+                    {showDraftSystem ? "Ocultar Triaje" : "Mostrar Triaje"}
+                  </button>
                 </div>
+
+                {/* Mensaje de alerta durante triaje activo */}
+                {isDraftActive && (
+                  <div className="mt-4 bg-blue-500/80 text-white p-3 rounded-lg">
+                    <p className="font-medium">
+                      ⚠️ Triaje activo: Durante el triaje solo se pueden asignar
+                      jugadores mediante el sistema de triaje.
+                    </p>
+                  </div>
+                )}
               </div>
+
+              {/* Sistema de Triaje */}
+              {showDraftSystem && (
+                <DraftSystem
+                  availablePlayers={availablePlayers}
+                  teams={teams}
+                  onPlayerPicked={handleDraftPlayerPicked}
+                  onTeamsReset={handleReset}
+                  onDraftStateChange={handleDraftStateChange}
+                />
+              )}
 
               {/* Contenido Principal: Alineaciones (Izquierda) y Jugadores (Derecha) */}
               <div className="lg:flex gap-6">
@@ -380,6 +475,7 @@ export default function Home() {
                     onPlayerRemove={handleRemovePlayer}
                     isMobileView={isMobileView}
                     availablePlayers={availablePlayers}
+                    isDropDisabled={isDraftActive}
                   />
                   <TeamContainer
                     team={teams.nietos}
@@ -387,6 +483,7 @@ export default function Home() {
                     onPlayerRemove={handleRemovePlayer}
                     isMobileView={isMobileView}
                     availablePlayers={availablePlayers}
+                    isDropDisabled={isDraftActive}
                   />
                 </div>
 
@@ -395,6 +492,7 @@ export default function Home() {
                   <AvailablePlayers
                     players={availablePlayers}
                     isMobileView={isMobileView}
+                    isDragDisabled={isDraftActive}
                   />
                 </div>
               </div>

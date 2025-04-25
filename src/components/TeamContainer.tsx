@@ -12,6 +12,7 @@ interface TeamContainerProps {
   onPlayerRemove: (playerId: string) => void;
   isMobileView?: boolean;
   availablePlayers?: AppPlayer[];
+  isDropDisabled?: boolean;
 }
 
 export const TeamContainer = ({
@@ -20,6 +21,7 @@ export const TeamContainer = ({
   onPlayerRemove,
   isMobileView = false,
   availablePlayers = [],
+  isDropDisabled = false,
 }: TeamContainerProps) => {
   const [selectedPosition, setSelectedPosition] =
     useState<PlayerPosition | null>(null);
@@ -84,7 +86,7 @@ export const TeamContainer = ({
   };
 
   const handlePositionClick = (position: PlayerPosition) => {
-    if (isMobileView) {
+    if (isMobileView && !isDropDisabled) {
       // Si ya está seleccionada, la deseleccionamos
       if (selectedPosition === position) {
         setSelectedPosition(null);
@@ -95,7 +97,7 @@ export const TeamContainer = ({
   };
 
   const handlePlayerSelect = (player: AppPlayer, position: PlayerPosition) => {
-    if (isMobileView && selectedPosition) {
+    if (isMobileView && selectedPosition && !isDropDisabled) {
       onPlayerDrop(player.id, team.id, position);
       setSelectedPosition(null);
     }
@@ -119,6 +121,7 @@ export const TeamContainer = ({
       collect: (monitor) => ({
         isDragging: !!monitor.isDragging(),
       }),
+      canDrag: !isDropDisabled,
     });
 
     // Connect the drag ref to our div ref
@@ -129,6 +132,7 @@ export const TeamContainer = ({
     }, [connectDrag]);
 
     const isDragging = collected.isDragging;
+    const disabledClass = isDropDisabled ? "opacity-70" : "";
 
     return (
       <div
@@ -138,11 +142,14 @@ export const TeamContainer = ({
           team.id === "borjas" ? "bg-red-600" : "bg-purple-600"
         } rounded-lg shadow-md p-2 sm:p-3 flex flex-col items-center justify-center w-full h-full ${
           isDragging ? "opacity-50" : "opacity-100"
-        } cursor-pointer relative group`}
+        } cursor-pointer relative group ${disabledClass}`}
       >
         <div
-          className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          className={`absolute -top-2 -right-2 bg-red-500 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center cursor-pointer ${
+            isDropDisabled ? "hidden" : "opacity-0 group-hover:opacity-100"
+          } transition-opacity z-10`}
           onClick={(e) => {
+            if (isDropDisabled) return;
             e.stopPropagation();
             onPlayerRemove(player.id);
           }}
@@ -198,81 +205,92 @@ export const TeamContainer = ({
       team.players[position] = [];
     }
 
-    // Crear una lista de IDs de jugadores únicas
-    const uniquePlayerIds = Array.from(
-      new Set(team.players[position].map((player) => player.id))
-    );
+    const positionColor = getPositionColor(position);
+    const positionName = getPositionName(position);
+    const isActive = selectedPosition === position;
 
-    // Filtrar jugadores duplicados manteniendo sólo la primera ocurrencia
-    const uniquePlayers = uniquePlayerIds.map(
-      (id) => team.players[position].find((player) => player.id === id)!
-    );
-
-    const [{ isOver, canDrop }, drop] = useDrop<
-      AppPlayer,
-      { team: string; position: PlayerPosition },
-      { isOver: boolean; canDrop: boolean }
-    >({
-      accept: "player",
-      drop: (item) => {
-        onPlayerDrop(item.id, team.id, position);
-        return { team: team.id, position };
-      },
-      collect: (monitor) => ({
-        isOver: !!monitor.isOver(),
-        canDrop: !!monitor.canDrop(),
+    // React DnD hook para permitir soltar jugadores
+    const [{ isOver }, drop] = useDrop(
+      () => ({
+        accept: "PLAYER",
+        canDrop: () => !isDropDisabled,
+        drop: (item: { id: string }) => {
+          if (isDropDisabled) return;
+          onPlayerDrop(item.id, team.id, position);
+        },
+        collect: (monitor) => ({
+          isOver: !!monitor.isOver() && !isDropDisabled,
+        }),
       }),
-    });
+      [team.id, position, onPlayerDrop, isDropDisabled]
+    );
 
-    // Connect dropRef to the reference
+    // Connect the drop ref to our div ref
     useEffect(() => {
-      drop(dropZoneRef);
+      if (dropZoneRef.current) {
+        drop(dropZoneRef);
+      }
     }, [drop]);
 
-    // Si estamos en modo móvil, comprobar si esta posición está seleccionada
-    const isSelected = selectedPosition === position;
+    // Clases para resaltar cuando se está arrastrando encima
+    const dropHighlight = isOver
+      ? "border-yellow-300 bg-black/40"
+      : "border-gray-700/50";
+    const activeHighlight = isActive ? "border-blue-500" : "";
+    const disabledClass = isDropDisabled ? "opacity-70 cursor-not-allowed" : "";
 
     return (
-      <div className="relative">
-        <div
-          ref={dropZoneRef}
-          className={`position-drop-zone relative w-full rounded-xl backdrop-blur-sm p-3 ${getPositionColor(
-            position
-          )} shadow-md transition-colors ${
-            (isOver && canDrop) || isSelected
-              ? "ring-2 ring-white/70 ring-opacity-70"
-              : ""
-          } ${className}`}
-          onClick={() => handlePositionClick(position)}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="font-semibold text-white text-shadow">
-              {getPositionName(position)}
-            </h4>
-            <span className="bg-black/50 text-white text-xs rounded-full px-2 py-0.5">
-              {uniquePlayers.length}/{maxPlayers}
-            </span>
-          </div>
+      <div
+        ref={dropZoneRef}
+        className={`${className} ${positionColor} p-2 sm:p-3 rounded-lg ${dropHighlight} ${activeHighlight} ${disabledClass} transition-colors border-2 hover:border-white/30`}
+        onClick={() => handlePositionClick(position)}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-black font-bold text-sm sm:text-base">
+            {positionName}
+          </h3>
+          <span className="text-black/80 font-bold text-xs">
+            {team.players[position].length}/{maxPlayers}
+          </span>
+        </div>
 
-          <div className="flex flex-wrap gap-2">
-            {uniquePlayers.map((player) => (
-              <div key={player.id} className="w-full h-full">
-                <DraggablePlayerCard player={player} />
-              </div>
-            ))}
-            {uniquePlayers.length < maxPlayers && (
+        <div
+          className={`w-full grid gap-2 ${
+            position === "SUB" ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-1"
+          }`}
+        >
+          {team.players[position].map((player) => (
+            <DraggablePlayerCard key={player.id} player={player} />
+          ))}
+
+          {/* Espacios vacíos para completar la cuadrícula */}
+          {Array.from(
+            { length: maxPlayers - team.players[position].length },
+            (_, i) => (
               <div
-                className={`w-full h-24 sm:h-28 rounded-lg border-2 border-dashed border-white/50 flex items-center justify-center 
-                ${
-                  (isOver && canDrop) || isSelected
-                    ? "bg-white/20"
-                    : "bg-black/20"
-                } transition-colors`}
+                key={`empty-${position}-${i}`}
+                className={`border-2 border-dashed ${
+                  isOver ? "border-yellow-300" : "border-white/20"
+                } rounded-lg min-h-[80px] sm:min-h-[100px] flex items-center justify-center ${
+                  isActive ? "bg-blue-500/30" : "bg-black/20"
+                } ${isDropDisabled ? "opacity-50" : ""}`}
               >
-                <span className="text-white/80 text-2xl">+</span>
+                {isActive ? (
+                  <p className="text-blue-200 text-xs text-center px-2">
+                    Haz clic para seleccionar jugador
+                  </p>
+                ) : isDropDisabled ? (
+                  <p className="text-gray-400 text-xs text-center px-2">
+                    Triaje activo
+                  </p>
+                ) : (
+                  <p className="text-gray-400 text-xs text-center px-2">
+                    Arrastra jugador aquí
+                  </p>
+                )}
               </div>
-            )}
-          </div>
+            )
+          )}
         </div>
       </div>
     );

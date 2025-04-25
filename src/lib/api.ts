@@ -1,5 +1,11 @@
 import type { Player } from "./database/types";
-import type { TeamLineup, PlayerPosition } from "./database/types";
+import type {
+  TeamLineup,
+  PlayerPosition,
+  DraftState,
+  DraftHistoryItem,
+  DraftError,
+} from "./database/types";
 
 // Base API URL
 const API_URL = "/api";
@@ -140,5 +146,58 @@ export const teamApi = {
         method: "POST",
       }
     );
+  },
+};
+
+// Draft API functions
+export const draftApi = {
+  // Iniciar un nuevo triaje
+  start: async (): Promise<{
+    success: boolean;
+    startingTeam?: string;
+    error?: DraftError;
+  }> => {
+    return fetchAPI<{
+      success: boolean;
+      startingTeam?: string;
+      error?: DraftError;
+    }>("/draft/start", {
+      method: "POST",
+    });
+  },
+
+  // Terminar el triaje actual
+  end: async (): Promise<{ success: boolean; error?: DraftError }> => {
+    return fetchAPI<{ success: boolean; error?: DraftError }>("/draft/end", {
+      method: "POST",
+    });
+  },
+
+  // Obtener el estado actual del triaje
+  getState: async (): Promise<DraftState> => {
+    return fetchAPI<DraftState>("/draft/state");
+  },
+
+  // Seleccionar un jugador para un equipo en el triaje
+  pickPlayer: async (
+    teamId: string,
+    playerId: string
+  ): Promise<{ success: boolean; nextTeam?: string; error?: DraftError }> => {
+    return fetchAPI<{
+      success: boolean;
+      nextTeam?: string;
+      error?: DraftError;
+    }>("/draft/pick", {
+      method: "POST",
+      body: JSON.stringify({
+        teamId,
+        playerId,
+      }),
+    });
+  },
+
+  // Obtener el historial de selecciones del triaje
+  getHistory: async (): Promise<DraftHistoryItem[]> => {
+    return fetchAPI<DraftHistoryItem[]>("/draft/history");
   },
 };

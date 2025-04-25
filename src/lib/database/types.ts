@@ -50,3 +50,26 @@ export type TeamPlayerPosition = {
   position: PlayerPosition;
   position_order: number;
 };
+
+// Tipos para el sistema de triaje
+export type DraftState = {
+  id: string;
+  current_team: string | null;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type DraftHistoryItem = {
+  id: string;
+  team_id: string;
+  player_id: string;
+  pick_order: number;
+  created_at: string;
+  teams?: { name: string };
+  players?: { name: string };
+};
+
+export type DraftError = {
+  message: string;
+};

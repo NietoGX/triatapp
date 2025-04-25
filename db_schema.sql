@@ -1,35 +1,53 @@
 -- Esquema simplificado para Futbol Triaje
 -- Este esquema está diseñado para guardar únicamente la alineación actual
 
--- Tabla de equipos
-CREATE TABLE teams (
-  id VARCHAR(50) PRIMARY KEY,       -- 'borjas', 'nietos', etc.
-  name VARCHAR(100) NOT NULL        -- 'Casper', 'NietakO', etc.
+-- Tabla para equipos
+CREATE TABLE IF NOT EXISTS teams (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL
 );
 
--- Tabla de jugadores (ya existente en la aplicación)
--- Se muestra aquí sólo como referencia
-CREATE TABLE players (
-  id VARCHAR(50) PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  nickname VARCHAR(100),
-  number INT,
-  position VARCHAR(20),             -- Posición preferida del jugador
-  rating INT NOT NULL,
-  goals INT DEFAULT 0,
-  assists INT DEFAULT 0,
-  saves INT DEFAULT 0,
-  goals_saved INT DEFAULT 0
+-- Tabla para jugadores
+CREATE TABLE IF NOT EXISTS players (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  nickname TEXT,
+  position TEXT,
+  number INTEGER,
+  goals INTEGER DEFAULT 0,
+  assists INTEGER DEFAULT 0,
+  saves INTEGER DEFAULT 0,
+  goals_saved INTEGER DEFAULT 0,
+  rating INTEGER DEFAULT 5,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabla para almacenar la asignación de jugadores a posiciones dentro de cada equipo
-CREATE TABLE team_player_positions (
-  id VARCHAR(50) PRIMARY KEY,
-  team_id VARCHAR(50) NOT NULL,     -- Equipo al que pertenece esta asignación
-  player_id VARCHAR(50) NOT NULL,   -- Jugador asignado
-  position VARCHAR(20) NOT NULL,    -- 'GK', 'CL', 'CR', 'ML', 'MR', 'ST', 'SUB'
-  position_order INT DEFAULT 0,     -- Para posiciones que permiten múltiples jugadores (como suplentes)
-  UNIQUE (team_id, player_id)       -- Un jugador solo puede estar una vez en cada equipo
+-- Tabla para posiciones de jugadores en equipos
+CREATE TABLE IF NOT EXISTS team_player_positions (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  player_id TEXT NOT NULL,
+  position TEXT NOT NULL,
+  position_order INTEGER DEFAULT 0
+);
+
+-- Tabla para el estado del triaje
+CREATE TABLE IF NOT EXISTS draft_state (
+  id TEXT PRIMARY KEY DEFAULT 'current',
+  current_team TEXT,
+  is_active BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla para el historial del triaje
+CREATE TABLE IF NOT EXISTS draft_history (
+  id TEXT PRIMARY KEY,
+  team_id TEXT NOT NULL,
+  player_id TEXT NOT NULL,
+  pick_order INTEGER NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Insertar equipos por defecto

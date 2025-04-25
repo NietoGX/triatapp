@@ -6,12 +6,14 @@ interface AvailablePlayersProps {
   players: AppPlayer[];
   onPlayerDrop?: (player: AppPlayer) => void;
   isMobileView?: boolean;
+  isDragDisabled?: boolean;
 }
 
 export const AvailablePlayers = ({
   players,
   onPlayerDrop,
   isMobileView = false,
+  isDragDisabled = false,
 }: AvailablePlayersProps) => {
   const [selectedPlayer, setSelectedPlayer] = useState<AppPlayer | null>(null);
 
@@ -50,50 +52,62 @@ export const AvailablePlayers = ({
   };
 
   // Componente de tarjeta de jugador arrastrable
-  const DraggablePlayerCard = ({ player }: { player: AppPlayer }) => {
+  const DraggablePlayerCard = ({
+    player,
+    isMobileView,
+    isDragDisabled,
+  }: {
+    player: AppPlayer;
+    isMobileView: boolean;
+    isDragDisabled?: boolean;
+  }) => {
     const divRef = useRef<HTMLDivElement>(null);
-    const [{ isDragging }, connectDrag] = useDrag<
-      AppPlayer,
-      unknown,
-      { isDragging: boolean }
-    >({
-      type: "player",
-      item: player,
-      collect: (monitor) => ({
-        isDragging: !!monitor.isDragging(),
+    const [{ isDragging }, drag] = useDrag(
+      () => ({
+        type: "PLAYER",
+        item: { id: player.id },
+        collect: (monitor) => ({
+          isDragging: !!monitor.isDragging(),
+        }),
+        canDrag: !isDragDisabled,
       }),
-      canDrag: !isMobileView, // Solo permitir arrastrar en desktop
-    });
+      [player.id, isDragDisabled]
+    );
 
     // Connect the drag ref to our div ref
     useEffect(() => {
       if (divRef.current) {
-        connectDrag(divRef);
+        drag(divRef);
       }
-    }, [connectDrag]);
+    }, [drag]);
+
+    const dragClass = isDragging ? "opacity-50" : "";
+    const disabledClass = isDragDisabled
+      ? "cursor-not-allowed opacity-70"
+      : "cursor-grab";
 
     return (
       <div
         ref={divRef}
         onClick={(e) => handlePlayerClick(player, e)}
-        className={`w-full bg-yellow-500 rounded-lg overflow-hidden shadow-md transition-all duration-200 hover:bg-yellow-400 
-          ${isDragging ? "opacity-50" : "opacity-100"}
-          ${isMobileView ? "cursor-pointer" : "cursor-move"}`}
+        className={`bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 shadow-md ${dragClass} ${disabledClass} hover:bg-gray-700/90 transition-all duration-200 border border-white/5`}
       >
-        <div className="flex items-center p-2 sm:p-3">
-          <div className="flex-shrink-0 bg-black/60 rounded-full w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center mr-3">
-            <p className="text-white font-bold text-lg sm:text-xl">
-              {player.rating}
-            </p>
-          </div>
-          <div className="flex-grow">
-            <h4 className="text-black font-bold text-base sm:text-lg truncate">
-              {player.name}
-            </h4>
-            <p className="text-black/80 text-xs uppercase">
-              {player.position || "Sin posición"}
-            </p>
-          </div>
+        <div className="flex justify-between items-start mb-1.5">
+          <div className="font-medium text-white">{player.name}</div>
+          <div className="text-yellow-400 text-sm">⭐ {player.rating}</div>
+        </div>
+        <div className="text-sm text-blue-300">
+          {player.position ? player.position : "Sin posición"}
+        </div>
+        <div className="mt-1 text-xs text-gray-400 flex space-x-1.5">
+          <span>G: {player.stats?.goals || 0}</span>
+          <span>A: {player.stats?.assists || 0}</span>
+          {(player.position === "GK" || player.stats?.saves > 0) && (
+            <>
+              <span>P: {player.stats?.saves || 0}</span>
+              <span>GP: {player.stats?.goalsSaved || 0}</span>
+            </>
+          )}
         </div>
       </div>
     );
@@ -201,25 +215,56 @@ export const AvailablePlayers = ({
     );
   };
 
+  // Grupo los jugadores por posición para mostrarlos ordenados
+  const groupedPlayers: { [key: string]: AppPlayer[] } = {
+    Porteros: players.filter((p) => p.position === "GK"),
+    Defensas: players.filter((p) => p.position === "CL" || p.position === "CR"),
+    Mediocampistas: players.filter(
+      (p) => p.position === "ML" || p.position === "MR"
+    ),
+    Delanteros: players.filter((p) => p.position === "ST"),
+    Otros: players.filter(
+      (p) =>
+        !p.position ||
+        !["GK", "CL", "CR", "ML", "MR", "ST"].includes(p.position)
+    ),
+  };
+
+  // Eliminar categorías vacías
+  Object.keys(groupedPlayers).forEach((key) => {
+    if (groupedPlayers[key].length === 0) {
+      delete groupedPlayers[key];
+    }
+  });
+
   return (
-    <div className="bg-black/20 backdrop-blur-md rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 shadow-lg border border-white/10">
-      <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-white drop-shadow flex items-center">
-        <span className="bg-yellow-500 text-black rounded-full h-6 w-6 flex items-center justify-center mr-2 text-xs sm:text-sm">
-          {players.length}
-        </span>
-        Jugadores Disponibles
+    <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-lg">
+      <h3 className="text-xl font-semibold mb-4 text-white">
+        Jugadores Disponibles {isDragDisabled && "(Triaje activo)"}
       </h3>
 
-      {players.length === 0 ? (
-        <div className="flex justify-center items-center h-[120px] sm:h-[180px] bg-black/30 rounded-md border border-white/5">
-          <p className="text-white/70 text-sm sm:text-base">
-            Todos los jugadores han sido asignados
-          </p>
-        </div>
+      {Object.keys(groupedPlayers).length === 0 ? (
+        <p className="text-gray-400 text-center py-4">
+          No hay jugadores disponibles
+        </p>
       ) : (
-        <div className="flex flex-col gap-2">
-          {players.map((player) => (
-            <DraggablePlayerCard key={player.id} player={player} />
+        <div className="space-y-5">
+          {Object.entries(groupedPlayers).map(([category, categoryPlayers]) => (
+            <div key={category}>
+              <h4 className="text-white/80 text-sm font-medium mb-2">
+                {category} ({categoryPlayers.length})
+              </h4>
+              <div className="space-y-2">
+                {categoryPlayers.map((player) => (
+                  <DraggablePlayerCard
+                    key={player.id}
+                    player={player}
+                    isMobileView={isMobileView}
+                    isDragDisabled={isDragDisabled}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
