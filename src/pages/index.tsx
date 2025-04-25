@@ -417,10 +417,7 @@ export default function Home() {
 
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="bg-white/90 p-6 rounded-lg shadow-lg text-center">
-                <p className="text-xl mb-4">Cargando jugadores...</p>
-                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-              </div>
+              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
             </div>
           ) : (
             <DndProvider backend={backend}>
