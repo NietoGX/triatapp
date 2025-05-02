@@ -8,7 +8,6 @@ type SaveStatsRequest = {
   goals?: number;
   assists?: number;
   saves?: number;
-  goals_saved?: number;
 };
 
 type ErrorResponse = {
@@ -37,18 +36,19 @@ export default async function handler(
       goals = 0,
       assists = 0,
       saves = 0,
-      goals_saved = 0,
     } = req.body as SaveStatsRequest;
 
     if (!matchId || !playerId || !teamId) {
       return res.status(400).json({ error: "Faltan datos requeridos" });
     }
 
-    const result = await savePlayerMatchStats(matchId, playerId, teamId, {
+    const result = await savePlayerMatchStats({
+      match_id: matchId,
+      player_id: playerId,
+      team_id: teamId,
       goals,
       assists,
       saves,
-      goals_saved,
     });
 
     if (result.success) {

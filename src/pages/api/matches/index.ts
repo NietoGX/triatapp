@@ -40,13 +40,19 @@ export default async function handler(
 
         // Create a new match
         try {
-          const newMatch = await createMatch(req.body);
-          if (!newMatch) {
-            console.error("Match creation returned null");
+          const result = await createMatch(
+            req.body.name,
+            req.body.date,
+            req.body.availablePlayers || []
+          );
+
+          if (!result.success || !result.match) {
+            console.error("Match creation failed:", result.error);
             return res.status(500).json({ error: "Error al crear el partido" });
           }
-          console.log("Match created successfully:", newMatch);
-          return res.status(201).json(newMatch);
+
+          console.log("Match created successfully:", result.match);
+          return res.status(201).json(result.match);
         } catch (createError) {
           console.error("Error specific to match creation:", createError);
           const errorMessage =

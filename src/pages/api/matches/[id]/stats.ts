@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { getMatchStats, savePlayerMatchStats } from "@/lib/database/matchApi";
-import { PlayerMatchStats } from "@/lib/database/types";
 
 type SavePlayerStatsRequest = {
   player_id: string;

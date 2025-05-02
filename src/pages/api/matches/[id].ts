@@ -32,18 +32,19 @@ export default async function handler(
 
   try {
     // Get match data
-    const match = await getMatchById(id);
+    const matchResult = await getMatchById(id);
 
-    if (!match) {
+    if (!matchResult.success || !matchResult.match) {
       return res.status(404).json({ error: "Match not found" });
     }
 
     // Get match stats
-    const stats = await getMatchStats(id);
+    const statsResult = await getMatchStats(id);
+    const stats = statsResult.success ? statsResult.stats || [] : [];
 
     return res.status(200).json({
-      match,
-      stats: stats || [],
+      match: matchResult.match,
+      stats,
     });
   } catch (error) {
     console.error("Error retrieving match:", error);

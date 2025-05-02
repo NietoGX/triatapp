@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { draftApi } from "@/lib/api";
 import { AppPlayer, Team } from "@/types";
 import { DraftHistoryItem, DraftState } from "@/lib/database/types";
@@ -36,6 +36,29 @@ export default function DraftSystem({
   const [fadeEffect, setFadeEffect] = useState(false);
   const [showTurnIndicator, setShowTurnIndicator] = useState(false);
 
+  // Cargar el estado del triaje
+  const loadDraftState = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const state = await draftApi.getState(matchId);
+      setDraftState(state);
+      setIsLoading(false);
+    } catch {
+      setError("Error al cargar el estado del triaje");
+      setIsLoading(false);
+    }
+  }, [matchId]);
+
+  // Cargar el historial del triaje
+  const loadDraftHistory = useCallback(async () => {
+    try {
+      const history = await draftApi.getHistory(matchId);
+      setDraftHistory(history);
+    } catch {
+      setError("Error al cargar el historial del triaje");
+    }
+  }, [matchId]);
+
   // Cargar el estado inicial del triaje
   useEffect(() => {
     if (matchId) {
@@ -44,7 +67,7 @@ export default function DraftSystem({
         loadDraftHistory();
       }
     }
-  }, [matchId]);
+  }, [matchId, draftState.is_active, loadDraftState, loadDraftHistory]);
 
   // Notificar al componente padre cuando cambia el estado del triaje
   useEffect(() => {
@@ -72,30 +95,7 @@ export default function DraftSystem({
         clearTimeout(indicatorTimer);
       };
     }
-  }, [draftState.current_team]);
-
-  // Cargar el estado del triaje
-  const loadDraftState = async () => {
-    try {
-      setIsLoading(true);
-      const state = await draftApi.getState(matchId);
-      setDraftState(state);
-      setIsLoading(false);
-    } catch {
-      setError("Error al cargar el estado del triaje");
-      setIsLoading(false);
-    }
-  };
-
-  // Cargar el historial del triaje
-  const loadDraftHistory = async () => {
-    try {
-      const history = await draftApi.getHistory(matchId);
-      setDraftHistory(history);
-    } catch {
-      setError("Error al cargar el historial del triaje");
-    }
-  };
+  }, [draftState.current_team, draftState.is_active]);
 
   // Iniciar un nuevo triaje
   const handleStartDraft = async () => {
