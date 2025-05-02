@@ -12,36 +12,61 @@ export async function savePlayerPosition(
   positionOrder: number = 0
 ) {
   try {
+    console.log("Checking existing position for:", { teamId, playerId });
+
+    // Convert playerId to string if it's not already
+    const playerIdStr = String(playerId);
+
     // Buscar primero si ya existe una entrada para este jugador y equipo
-    const { data: existingData } = await supabase
+    const { data: existingData, error: selectError } = await supabase
       .from("team_player_positions")
       .select("id")
       .eq("team_id", teamId)
-      .eq("player_id", playerId)
-      .single();
+      .eq("player_id", playerIdStr);
 
-    if (existingData) {
+    if (selectError) {
+      console.error("Error checking existing position:", selectError);
+      throw selectError;
+    }
+
+    // If we have data and it contains at least one row
+    if (existingData && existingData.length > 0) {
+      console.log("Updating existing position:", existingData[0].id);
       // Actualizar la posición existente
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from("team_player_positions")
         .update({
           position,
           position_order: positionOrder,
         })
-        .eq("id", existingData.id);
+        .eq("id", existingData[0].id);
 
-      if (error) throw error;
+      if (updateError) {
+        console.error("Error updating position:", updateError);
+        throw updateError;
+      }
     } else {
-      // Crear una nueva asignación
-      const { error } = await supabase.from("team_player_positions").insert({
-        id: uuidv4(),
-        team_id: teamId,
-        player_id: playerId,
+      console.log("Creating new position with data:", {
+        teamId,
+        playerId: playerIdStr,
         position,
-        position_order: positionOrder,
+        positionOrder,
       });
+      // Crear una nueva asignación
+      const { error: insertError } = await supabase
+        .from("team_player_positions")
+        .insert({
+          id: uuidv4(),
+          team_id: teamId,
+          player_id: playerIdStr,
+          position,
+          position_order: positionOrder,
+        });
 
-      if (error) throw error;
+      if (insertError) {
+        console.error("Error inserting position:", insertError);
+        throw insertError;
+      }
     }
 
     return { success: true };

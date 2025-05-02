@@ -227,7 +227,22 @@ export default function Home() {
       await lineupApi.savePosition(teamId, playerId, position, order);
     } catch (error) {
       console.error("Error al guardar posición en base de datos:", error);
-      // Podría implementarse un rollback o notificación al usuario
+      // Revert the changes in the UI
+      setTeams((prevTeams) => {
+        const revertedTeams = { ...prevTeams };
+        revertedTeams[teamId].players[position] = revertedTeams[teamId].players[
+          position
+        ].filter((p) => p.id !== playerId);
+        return revertedTeams;
+      });
+      // Add the player back to available players
+      setAvailablePlayers((prev) => [...prev, player]);
+      // Show error message to user
+      alert(
+        `Error al guardar la posición: ${
+          error instanceof Error ? error.message : "Error desconocido"
+        }`
+      );
     }
   };
 

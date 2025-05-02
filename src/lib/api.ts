@@ -26,7 +26,9 @@ async function fetchAPI<T>(
   if (!res.ok) {
     const error = await res.json();
     throw new Error(
-      error.message || "An error occurred while fetching the data."
+      error.error ||
+        error.message ||
+        "An error occurred while fetching the data."
     );
   }
 
