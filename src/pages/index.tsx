@@ -12,14 +12,15 @@ import TeamContainer, {
 } from "@/components/TeamContainer";
 import DraftSystem from "@/components/DraftSystem";
 import { AppPlayer, PlayerPosition, Team } from "@/types";
-import { playerApi, lineupApi, teamApi, draftApi } from "@/lib/api";
-import { DraftState } from "@/lib/database/types";
+import { playerApi, lineupApi, teamApi, matchApi } from "@/lib/api";
+import { DraftState, Match } from "@/lib/database/types";
+import CreateMatchModal from "@/components/CreateMatchModal";
 
 // Default empty teams structure
 const DEFAULT_TEAMS: { [key: string]: Team } = {
   borjas: {
-    id: "borjas",
-    name: "Casper",
+    id: "Equipo A",
+    name: "Equipo A",
     players: {
       GK: [],
       CL: [],
@@ -31,8 +32,8 @@ const DEFAULT_TEAMS: { [key: string]: Team } = {
     },
   },
   nietos: {
-    id: "nietos",
-    name: "NietakO",
+    id: "Equipo B",
+    name: "Equipo B",
     players: {
       GK: [],
       CL: [],
@@ -55,6 +56,10 @@ export default function Home() {
   const [showDraftSystem, setShowDraftSystem] = useState(false);
   const [isDraftActive, setIsDraftActive] = useState(false);
 
+  // Match state
+  const [latestMatch, setLatestMatch] = useState<Match | null>(null);
+  const [isCreateMatchModalOpen, setIsCreateMatchModalOpen] = useState(false);
+
   // Players and teams state
   const [availablePlayers, setAvailablePlayers] = useState<AppPlayer[]>([]);
   const [teams, setTeams] = useState<{ [key: string]: Team }>(DEFAULT_TEAMS);
@@ -68,16 +73,59 @@ export default function Home() {
     setIsMobileView(isMobile);
   }, []);
 
-  // Load players and lineups from database
-  useEffect(() => {
-    async function loadData() {
+  // Function to load match-specific lineups and players
+  const loadMatchLineups = async (matchId: string) => {
+    try {
+      // Load available players for this match
+      const matchPlayers = await matchApi.getAvailablePlayers(matchId);
+
+      // Map players to app format
+      const appPlayers: AppPlayer[] = matchPlayers.map((p) => ({
+        id: p.id,
+        name: p.name,
+        rating: p.rating,
+        position: p.position as PlayerPosition | null,
+        team: null,
+        stats: {
+          goals: p.goals,
+          assists: p.assists,
+          saves: p.saves,
+          goalsSaved: p.goals_saved,
+        },
+        number: p.number || undefined,
+        nickname: p.nickname || undefined,
+      }));
+
+      // Load match-specific lineups
+      const lineups = await lineupApi.getAll(matchId);
+
+      if (lineups && (lineups.borjas || lineups.nietos)) {
+        setTeams(lineups);
+
+        // Filter out players already assigned to teams
+        const assignedPlayerIds = new Set<string>();
+
+        Object.values(lineups).forEach((team) => {
+          Object.values(team.players).forEach((positionPlayers) => {
+            positionPlayers.forEach((player) => {
+              assignedPlayerIds.add(player.id);
+            });
+          });
+        });
+
+        setAvailablePlayers(
+          appPlayers.filter((player) => !assignedPlayerIds.has(player.id))
+        );
+      } else {
+        // If no lineups exist for this match, show all available players
+        setAvailablePlayers(appPlayers);
+      }
+    } catch (error) {
+      console.error(`Error loading data for match ${matchId}:`, error);
+
+      // Fallback to loading all players if match-specific loading fails
       try {
-        setIsLoading(true);
-
-        // 1. Cargar los jugadores
         const dbPlayers = await playerApi.getAll();
-
-        // 2. Mapear jugadores a formato de la aplicación
         const appPlayers: AppPlayer[] = dbPlayers.map((p) => ({
           id: p.id,
           name: p.name,
@@ -93,49 +141,38 @@ export default function Home() {
           number: p.number || undefined,
           nickname: p.nickname || undefined,
         }));
+        setAvailablePlayers(appPlayers);
+      } catch (err) {
+        console.error("Error loading fallback players:", err);
+        setAvailablePlayers([]);
+      }
+    }
+  };
 
-        // 3. Cargar las alineaciones desde la base de datos
+  // Load players, lineups and matches from database
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setIsLoading(true);
+
+        // Load matches
         try {
-          const lineups = await lineupApi.getAll();
+          const matchesData = await matchApi.getAll();
 
-          if (lineups && (lineups.borjas || lineups.nietos)) {
-            setTeams(lineups);
+          // Set the latest match based on created_at timestamp
+          if (matchesData.length > 0) {
+            const latestMatchData = matchesData.sort(
+              (a, b) =>
+                new Date(b.created_at).getTime() -
+                new Date(a.created_at).getTime()
+            )[0];
+            setLatestMatch(latestMatchData);
 
-            // Filtrar jugadores disponibles (los que no están en ningún equipo)
-            const assignedPlayerIds = new Set<string>();
-
-            Object.values(lineups).forEach((team) => {
-              Object.values(team.players).forEach((positionPlayers) => {
-                positionPlayers.forEach((player) => {
-                  assignedPlayerIds.add(player.id);
-                });
-              });
-            });
-
-            setAvailablePlayers(
-              appPlayers.filter((player) => !assignedPlayerIds.has(player.id))
-            );
-          } else {
-            // Si no hay alineaciones en la BD, todos los jugadores están disponibles
-            setAvailablePlayers(appPlayers);
+            // Load the latest match lineups
+            await loadMatchLineups(latestMatchData.id);
           }
         } catch (error) {
-          console.error("Error al cargar alineaciones:", error);
-          // Si falla la carga de alineaciones, mostrar todos los jugadores como disponibles
-          setAvailablePlayers(appPlayers);
-        }
-
-        // 4. Verificar el estado del triaje
-        try {
-          const draftState = await draftApi.getState();
-          setIsDraftActive(draftState.is_active);
-
-          // Si el triaje está activo, mostrar automáticamente el panel de triaje
-          if (draftState.is_active) {
-            setShowDraftSystem(true);
-          }
-        } catch (error) {
-          console.error("Error al verificar estado del triaje:", error);
+          console.error("Error al cargar partidos:", error);
         }
 
         setIsLoading(false);
@@ -208,45 +245,31 @@ export default function Home() {
     }
 
     // Step 4: Add player to the new team and position
-    const updatedPlayer = {
+    const playerToAdd = {
       ...player,
       team: teamId,
     };
+    newTeams[teamId].players[position].push(playerToAdd);
 
-    newTeams[teamId].players[position].push(updatedPlayer);
-
-    // Step 5: Update state with the new teams object
+    // Step 5: Update the teams state
     setTeams(newTeams);
 
-    // Step 6: Guardar en la base de datos
+    // Step 6: Save the player position to the database for the current match
     try {
-      // Determinar el orden (por ahora siempre al final)
-      const order = newTeams[teamId].players[position].length - 1;
-
-      // Guardar la posición en la base de datos
-      await lineupApi.savePosition(teamId, playerId, position, order);
+      if (latestMatch) {
+        await lineupApi.savePosition(
+          teamId,
+          playerId,
+          position,
+          0, // default order
+          latestMatch.id
+        );
+      }
     } catch (error) {
-      console.error("Error al guardar posición en base de datos:", error);
-      // Revert the changes in the UI
-      setTeams((prevTeams) => {
-        const revertedTeams = { ...prevTeams };
-        revertedTeams[teamId].players[position] = revertedTeams[teamId].players[
-          position
-        ].filter((p) => p.id !== playerId);
-        return revertedTeams;
-      });
-      // Add the player back to available players
-      setAvailablePlayers((prev) => [...prev, player]);
-      // Show error message to user
-      alert(
-        `Error al guardar la posición: ${
-          error instanceof Error ? error.message : "Error desconocido"
-        }`
-      );
+      console.error("Error al guardar la posición del jugador:", error);
     }
   };
 
-  // Remove player from team, return to available players
   const handleRemovePlayer = async (playerId: string) => {
     // Si el triaje está activo, no permitir quitar jugadores manualmente
     if (isDraftActive) {
@@ -256,168 +279,137 @@ export default function Home() {
       return;
     }
 
-    // Find which team the player is on
-    let playerTeam: string | null = null;
+    // Find the player from teams
+    let player: AppPlayer | undefined;
+    let playerTeamId: string | null = null;
     let playerPosition: PlayerPosition | null = null;
-    let player: AppPlayer | null = null;
 
-    // Search through teams
-    Object.keys(teams).forEach((teamId) => {
-      const team = teams[teamId];
-      Object.keys(team.players).forEach((pos) => {
-        const playerIndex = team.players[pos as PlayerPosition].findIndex(
+    // Search in teams to get the player's current position and team
+    for (const teamId of ["borjas", "nietos"] as const) {
+      for (const pos of Object.keys(
+        teams[teamId].players
+      ) as PlayerPosition[]) {
+        const foundPlayer = teams[teamId].players[pos].find(
           (p) => p.id === playerId
         );
-        if (playerIndex >= 0) {
-          playerTeam = teamId;
-          playerPosition = pos as PlayerPosition;
-          player = team.players[pos as PlayerPosition][playerIndex];
+        if (foundPlayer) {
+          player = foundPlayer;
+          playerTeamId = teamId;
+          playerPosition = pos;
+          break;
         }
-      });
-    });
-
-    if (playerTeam && playerPosition && player) {
-      // Remove from team
-      setTeams((prevTeams) => {
-        const newTeams = { ...prevTeams };
-        newTeams[playerTeam as string].players[
-          playerPosition as PlayerPosition
-        ] = newTeams[playerTeam as string].players[
-          playerPosition as PlayerPosition
-        ].filter((p) => p.id !== playerId);
-        return newTeams;
-      });
-
-      // Add to available players
-      setAvailablePlayers((prev) => [
-        ...prev,
-        { ...player, team: null } as AppPlayer,
-      ]);
-
-      // Eliminar de la base de datos
-      try {
-        await lineupApi.removePlayer(playerTeam, playerId);
-      } catch (error) {
-        console.error("Error al eliminar jugador de la base de datos:", error);
       }
-    }
-  };
-
-  // Reset everything
-  const handleReset = async () => {
-    // Si el triaje está activo, no permitir resetear manualmente
-    if (isDraftActive) {
-      console.warn(
-        "No se pueden resetear los equipos durante el triaje activo."
-      );
-      return;
+      if (player) break;
     }
 
-    // Resetear el estado
-    setTeams(DEFAULT_TEAMS);
-
-    // Recargar todos los jugadores como disponibles
-    try {
-      const dbPlayers = await playerApi.getAll();
-
-      const appPlayers: AppPlayer[] = dbPlayers.map((p) => ({
-        id: p.id,
-        name: p.name,
-        rating: p.rating,
-        position: p.position as PlayerPosition | null,
-        team: null,
-        stats: {
-          goals: p.goals,
-          assists: p.assists,
-          saves: p.saves,
-          goalsSaved: p.goals_saved,
-        },
-        number: p.number || undefined,
-        nickname: p.nickname || undefined,
-      }));
-
-      setAvailablePlayers(appPlayers);
-
-      // Resetear alineaciones en la base de datos
-      await lineupApi.reset();
-    } catch (error) {
-      console.error("Error al resetear alineaciones:", error);
-    }
-
-    // Toggle para forzar recarga
-    setDbInitialized((prev) => !prev);
-  };
-
-  // Inicializar la base de datos
-  const handleInitializeDb = async () => {
-    try {
-      setIsInitializing(true);
-
-      // Inicializar equipos
-      await teamApi.initialize();
-
-      // Inicializar jugadores de ejemplo
-      await playerApi.initialize();
-
-      // Recargar los datos
-      setDbInitialized(!dbInitialized);
-
-      setIsInitializing(false);
-    } catch (error) {
-      console.error("Error al inicializar la base de datos:", error);
-      setIsInitializing(false);
-    }
-  };
-
-  // Manejar la selección de jugadores en el triaje
-  const handleDraftPlayerPicked = (playerId: string, teamId: string) => {
-    // Buscar al jugador seleccionado
-    const player = availablePlayers.find((p) => p.id === playerId);
-    if (!player) return;
-
-    // Primero, eliminar al jugador de la lista de disponibles
-    setAvailablePlayers((prev) => prev.filter((p) => p.id !== playerId));
+    // If player not found, exit function
+    if (!player || !playerTeamId || !playerPosition) return;
 
     // Step 1: Create a new teams object to avoid direct mutation
     const newTeams = JSON.parse(JSON.stringify(teams)) as typeof teams;
 
-    // Step 2: Add player to the SUB position in the team
-    const updatedPlayer = {
+    // Step 2: Remove player from their current team and position
+    newTeams[playerTeamId].players[playerPosition] = newTeams[
+      playerTeamId
+    ].players[playerPosition].filter((p) => p.id !== playerId);
+
+    // Step 3: Add player back to available players
+    const playerToAdd = {
       ...player,
-      team: teamId,
+      team: null,
     };
+    setAvailablePlayers((prev) => [...prev, playerToAdd]);
 
-    newTeams[teamId].players["SUB"].push(updatedPlayer);
-
-    // Step 3: Update state with the new teams object
+    // Step 4: Update the teams state
     setTeams(newTeams);
 
-    // Step 4: Guardar en la base de datos
+    // Step 5: Remove the player position from the database for the current match
     try {
-      // Determinar el orden (por ahora siempre al final)
-      const order = newTeams[teamId].players["SUB"].length - 1;
-
-      // Guardar la posición en la base de datos
-      lineupApi.savePosition(teamId, playerId, "SUB", order);
+      if (latestMatch) {
+        await lineupApi.removePlayer(playerTeamId, playerId, latestMatch.id);
+      }
     } catch (error) {
-      console.error("Error al guardar posición en base de datos:", error);
+      console.error("Error al quitar al jugador del equipo:", error);
     }
   };
 
-  // Alternar la visibilidad del sistema de triaje
-  const toggleDraftSystem = () => {
-    setShowDraftSystem(!showDraftSystem);
+  const handleReset = async () => {
+    // Si el triaje está activo, no permitir reiniciar alineaciones
+    if (isDraftActive) {
+      console.warn(
+        "No se pueden reiniciar las alineaciones durante el triaje activo."
+      );
+      return;
+    }
+
+    // Collect all players from teams
+    const allPlayers: AppPlayer[] = [];
+    for (const teamId of ["borjas", "nietos"] as const) {
+      for (const pos of Object.keys(
+        teams[teamId].players
+      ) as PlayerPosition[]) {
+        teams[teamId].players[pos].forEach((player) => {
+          allPlayers.push({
+            ...player,
+            team: null,
+          });
+        });
+      }
+    }
+
+    // Reset teams to default (empty)
+    setTeams(DEFAULT_TEAMS);
+
+    // Add all team players back to available players
+    setAvailablePlayers((prev) => [...prev, ...allPlayers]);
+
+    // Reset the lineups in the database for the current match
+    try {
+      if (latestMatch) {
+        await lineupApi.reset(latestMatch.id);
+      }
+    } catch (error) {
+      console.error("Error al reiniciar las alineaciones:", error);
+    }
   };
 
-  // Actualizar el estado del triaje
+  const handleInitializeDb = async () => {
+    try {
+      setIsInitializing(true);
+      // Inicializar la base de datos con datos de prueba
+      const result = await teamApi.initialize();
+      if (result) {
+        setDbInitialized(true);
+        console.log("Base de datos inicializada correctamente");
+      }
+    } catch (error) {
+      console.error("Error al inicializar la base de datos:", error);
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
+  // Handle when a player is picked in the draft system
+  const handleDraftPlayerPicked = (playerId: string, teamId: string) => {
+    // Find player in available players
+    const player = availablePlayers.find((p) => p.id === playerId);
+    if (!player) return;
+
+    // Get default position based on player's preferred position or SUB
+    const position = player.position || "SUB";
+
+    // Use the existing handlePlayerDrop function to add player to team
+    handlePlayerDrop(playerId, teamId, position);
+  };
+
+  // Update draft system state
   const handleDraftStateChange = (newState: DraftState) => {
     setIsDraftActive(newState.is_active);
   };
 
-  const backend = isMobileView ? TouchBackend : HTML5Backend;
-
   const handlePositionClick = (position: PlayerPosition, teamId: string) => {
-    if (isMobileView && !isDraftActive) {
+    // Only open selection modal on mobile view
+    if (isMobileView) {
       setSelectedPosition({ position, teamId });
     }
   };
@@ -429,162 +421,264 @@ export default function Home() {
     }
   };
 
+  const handleMatchCreated = async () => {
+    setIsCreateMatchModalOpen(false);
+
+    try {
+      const matchesData = await matchApi.getAll();
+
+      // Set the latest match
+      if (matchesData.length > 0) {
+        const latestMatchData = matchesData.sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+        setLatestMatch(latestMatchData);
+
+        // Reset teams to default (empty)
+        setTeams(DEFAULT_TEAMS);
+
+        // Load the latest match lineups
+        await loadMatchLineups(latestMatchData.id);
+      }
+    } catch (error) {
+      console.error("Error loading matches after creation:", error);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      hour: "2-digit",
+      minute: "2-digit",
+    };
+    const date = new Date(dateString);
+    return date.toLocaleDateString("es-ES", options);
+  };
+
   return (
     <>
       <Head>
         <title>Futbol Triaje</title>
         <meta
           name="description"
-          content="Aplicación para organizar equipos de fútbol"
+          content="Sistema de triaje para partidos de fútbol"
         />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
+
       <main className="min-h-screen bg-gradient-to-br from-gray-800 to-gray-900">
-        <div className="container mx-auto px-4 py-6 relative backdrop-blur-sm">
-          <header className="mb-6 text-center">
-            <h1 className="text-3xl font-bold text-white drop-shadow-lg">
-              TriatApp ⚽️
-            </h1>
-            <p className="text-white/80">De NietakO para los chavales ❤️</p>
-          </header>
+        <div className="container mx-auto py-6 px-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2">
+                Futbol Triaje
+              </h1>
+              {latestMatch ? (
+                <div className="bg-blue-900/30 p-3 rounded-lg mb-4">
+                  <h2 className="text-xl font-semibold text-blue-300">
+                    Próximo partido: {latestMatch.name}
+                  </h2>
+                  <p className="text-gray-300">
+                    {formatDate(latestMatch.date)}
+                  </p>
+                  <Link
+                    href={`/matches/${latestMatch.id}`}
+                    className="text-sm text-blue-400 hover:text-blue-300 mt-1 inline-block"
+                  >
+                    Ver detalles &rarr;
+                  </Link>
+                </div>
+              ) : (
+                <p className="text-gray-300 mb-4">
+                  No hay partidos programados
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
+              <Link
+                href="/players"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+              >
+                Jugadores
+              </Link>
+              <Link
+                href="/matches"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+              >
+                Partidos
+              </Link>
+              <Link
+                href="/db-setup"
+                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
+              >
+                Config BD
+              </Link>
+              <button
+                onClick={() => setShowDraftSystem(!showDraftSystem)}
+                className={`px-4 py-2 ${
+                  isDraftActive
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                } text-white rounded transition-colors`}
+              >
+                {isDraftActive
+                  ? "Triaje Activo"
+                  : showDraftSystem
+                  ? "Ocultar Triaje"
+                  : "Mostrar Triaje"}
+              </button>
+              <button
+                onClick={() => setIsCreateMatchModalOpen(true)}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+              >
+                Nuevo Partido
+              </button>
+            </div>
+          </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+          ) : !dbInitialized && availablePlayers.length === 0 ? (
+            <div className="bg-gray-800 p-6 rounded-lg mb-8 text-center">
+              <h2 className="text-2xl font-bold text-white mb-4">
+                Base de datos no inicializada
+              </h2>
+              <p className="text-gray-300 mb-6">
+                Necesitas inicializar la base de datos para empezar a usar la
+                aplicación.
+              </p>
+              <button
+                onClick={handleInitializeDb}
+                disabled={isInitializing}
+                className={`px-6 py-3 rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors ${
+                  isInitializing ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                {isInitializing
+                  ? "Inicializando..."
+                  : "Inicializar Base de Datos"}
+              </button>
             </div>
           ) : (
-            <DndProvider backend={backend}>
-              {/* Panel de Acciones (Arriba) */}
-              <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 mb-6 border border-white/10 shadow-lg">
-                <h3 className="text-xl font-semibold mb-4 text-white">
-                  Acciones
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={handleReset}
-                    disabled={isDraftActive}
-                    className="bg-red-600/90 hover:bg-red-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Reiniciar Equipos
-                  </button>
-                  <button
-                    onClick={handleInitializeDb}
-                    disabled={true || isInitializing || isDraftActive}
-                    className="bg-blue-600/90 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isInitializing
-                      ? "Inicializando..."
-                      : "Inicializar Base de Datos"}
-                  </button>
-                  <Link
-                    href="/players"
-                    className={`bg-green-600/90 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium text-center transition-all duration-200 shadow-md hover:shadow-lg ${
-                      isDraftActive ? "opacity-50 pointer-events-none" : ""
-                    }`}
-                  >
-                    Gestionar Jugadores
-                  </Link>
-                  <button
-                    onClick={toggleDraftSystem}
-                    className={`${
-                      showDraftSystem
-                        ? "bg-yellow-500/90 hover:bg-yellow-600"
-                        : "bg-purple-600/90 hover:bg-purple-700"
-                    } text-white py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg`}
-                  >
-                    {showDraftSystem ? "Ocultar Triaje" : "Mostrar Triaje"}
-                  </button>
-                </div>
-
-                {/* Mensaje de alerta durante triaje activo */}
-                {isDraftActive && (
-                  <div className="mt-4 bg-blue-500/80 text-white p-3 rounded-lg">
-                    <p className="font-medium">
-                      ⚠️ Triaje activo: Durante el triaje solo se pueden asignar
-                      jugadores mediante el sistema de triaje.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Sistema de Triaje */}
+            <>
               {showDraftSystem && (
                 <DraftSystem
                   availablePlayers={availablePlayers}
                   teams={teams}
+                  matchId={latestMatch ? latestMatch.id : ""}
+                  onDraftStateChange={handleDraftStateChange}
                   onPlayerPicked={handleDraftPlayerPicked}
                   onTeamsReset={handleReset}
-                  onDraftStateChange={handleDraftStateChange}
                 />
               )}
 
-              {/* Contenido Principal: Alineaciones (Izquierda) y Jugadores (Derecha) */}
-              <div className="lg:flex gap-6">
-                {/* Alineaciones (Izquierda) */}
-                <div className="w-full lg:w-3/4 grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 lg:mb-0">
-                  <TeamContainer
-                    team={teams.borjas}
-                    onPlayerDrop={handlePlayerDrop}
-                    onPlayerRemove={handleRemovePlayer}
-                    isMobileView={isMobileView}
-                    availablePlayers={availablePlayers}
-                    isDropDisabled={isDraftActive}
-                    onPositionClick={handlePositionClick}
-                  />
-                  <TeamContainer
-                    team={teams.nietos}
-                    onPlayerDrop={handlePlayerDrop}
-                    onPlayerRemove={handleRemovePlayer}
-                    isMobileView={isMobileView}
-                    availablePlayers={availablePlayers}
-                    isDropDisabled={isDraftActive}
-                    onPositionClick={handlePositionClick}
-                  />
-                </div>
+              {!showDraftSystem && latestMatch && (
+                <div className="mb-4">
+                  <div className="bg-gray-800/60 p-4 rounded-lg shadow-lg mb-4">
+                    <h2 className="text-xl font-bold text-white border-b border-gray-700 pb-2 mb-3">
+                      Alineaciones para: {latestMatch.name}
+                    </h2>
+                  </div>
 
-                {/* Jugadores Disponibles (Derecha) */}
-                <div className="w-full lg:w-1/4">
-                  <AvailablePlayers
-                    players={availablePlayers}
-                    isMobileView={isMobileView}
-                    isDragDisabled={isDraftActive}
-                  />
-                </div>
-              </div>
-
-              {/* Modal de selección de jugadores */}
-              {selectedPosition && (
-                <PlayerSelectionModal
-                  selectedPosition={selectedPosition.position}
-                  availablePlayers={availablePlayers}
-                  onPlayerSelect={handlePlayerSelect}
-                  onClose={() => setSelectedPosition(null)}
-                  getPositionName={(position) => {
-                    switch (position) {
-                      case "GK":
-                        return "Portero";
-                      case "CL":
-                        return "Central Izq.";
-                      case "CR":
-                        return "Central Der.";
-                      case "ML":
-                        return "Medio Izq.";
-                      case "MR":
-                        return "Medio Der.";
-                      case "ST":
-                        return "Delantero";
-                      case "SUB":
-                        return "Suplentes";
-                      default:
-                        return position;
+                  <DndProvider
+                    backend={
+                      isClient
+                        ? isMobileView
+                          ? TouchBackend
+                          : HTML5Backend
+                        : HTML5Backend
                     }
-                  }}
-                />
+                  >
+                    {/* Drag and Drop team builder interface */}
+                    <div className="lg:flex gap-6">
+                      {/* Team lineups (Left) */}
+                      <div className="w-full lg:w-3/4 grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 lg:mb-0">
+                        <TeamContainer
+                          team={teams.borjas}
+                          onPlayerDrop={handlePlayerDrop}
+                          onPlayerRemove={handleRemovePlayer}
+                          isMobileView={isMobileView}
+                          availablePlayers={availablePlayers}
+                          isDropDisabled={isDraftActive}
+                          onPositionClick={handlePositionClick}
+                        />
+                        <TeamContainer
+                          team={teams.nietos}
+                          onPlayerDrop={handlePlayerDrop}
+                          onPlayerRemove={handleRemovePlayer}
+                          isMobileView={isMobileView}
+                          availablePlayers={availablePlayers}
+                          isDropDisabled={isDraftActive}
+                          onPositionClick={handlePositionClick}
+                        />
+                      </div>
+
+                      {/* Available Players (Right) */}
+                      <div className="w-full lg:w-1/4">
+                        <AvailablePlayers
+                          players={availablePlayers}
+                          isMobileView={isMobileView}
+                          isDragDisabled={isDraftActive}
+                        />
+
+                        <div className="mt-4 flex space-x-2 justify-end">
+                          <button
+                            onClick={handleReset}
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors"
+                          >
+                            Reiniciar Alineaciones
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Player selection modal for mobile */}
+                    {selectedPosition && (
+                      <PlayerSelectionModal
+                        selectedPosition={selectedPosition.position}
+                        availablePlayers={availablePlayers}
+                        onPlayerSelect={handlePlayerSelect}
+                        onClose={() => setSelectedPosition(null)}
+                        getPositionName={(position) => {
+                          switch (position) {
+                            case "GK":
+                              return "Portero";
+                            case "CL":
+                              return "Central Izq.";
+                            case "CR":
+                              return "Central Der.";
+                            case "ML":
+                              return "Medio Izq.";
+                            case "MR":
+                              return "Medio Der.";
+                            case "ST":
+                              return "Delantero";
+                            case "SUB":
+                              return "Suplentes";
+                            default:
+                              return position;
+                          }
+                        }}
+                      />
+                    )}
+                  </DndProvider>
+                </div>
               )}
-            </DndProvider>
+            </>
           )}
         </div>
+
+        <CreateMatchModal
+          isOpen={isCreateMatchModalOpen}
+          onClose={() => setIsCreateMatchModalOpen(false)}
+          onMatchCreated={handleMatchCreated}
+        />
       </main>
     </>
   );

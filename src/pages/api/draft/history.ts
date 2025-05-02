@@ -3,7 +3,7 @@ import { getDraftHistory } from "@/lib/database/draftApi";
 
 /**
  * API endpoint para obtener el historial del triaje.
- * GET /api/draft/history
+ * GET /api/draft/history?matchId=xxx
  */
 export default async function handler(
   req: NextApiRequest,
@@ -14,10 +14,20 @@ export default async function handler(
   }
 
   try {
-    const history = await getDraftHistory();
+    const { matchId } = req.query;
+
+    if (!matchId || typeof matchId !== "string") {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Se requiere un ID de partido válido para obtener el historial del triaje",
+      });
+    }
+
+    const history = await getDraftHistory(matchId);
     return res.status(200).json(history);
   } catch (error) {
     console.error("Error al obtener historial del triaje:", error);
-    return res.status(500).json({ error: String(error) });
+    return res.status(500).json({ success: false, error: String(error) });
   }
 }

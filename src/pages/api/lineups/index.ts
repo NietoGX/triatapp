@@ -12,7 +12,11 @@ export default async function handler(
   switch (req.method) {
     case "GET":
       try {
-        const lineups = await loadTeamLineups();
+        // Extract matchId from query parameters if available
+        const matchId =
+          typeof req.query.matchId === "string" ? req.query.matchId : undefined;
+
+        const lineups = await loadTeamLineups(matchId);
         res.status(200).json(lineups);
       } catch (error) {
         console.error("Error al cargar alineaciones:", error);

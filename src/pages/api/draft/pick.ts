@@ -1,10 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pickPlayer } from "@/lib/database/draftApi";
 
+type PickPlayerRequest = {
+  teamId: string;
+  playerId: string;
+  matchId: string;
+};
+
 /**
  * API endpoint para seleccionar un jugador en el triaje.
  * POST /api/draft/pick
- * Body: { teamId: string, playerId: string }
  */
 export default async function handler(
   req: NextApiRequest,
@@ -15,16 +20,17 @@ export default async function handler(
   }
 
   try {
-    const { teamId, playerId } = req.body;
+    const { teamId, playerId, matchId } = req.body as PickPlayerRequest;
 
-    if (!teamId || !playerId) {
+    if (!teamId || !playerId || !matchId) {
       return res.status(400).json({
         success: false,
-        error: "Se requieren teamId y playerId",
+        error:
+          "Se requieren teamId, playerId y matchId para seleccionar un jugador",
       });
     }
 
-    const result = await pickPlayer(teamId, playerId);
+    const result = await pickPlayer(teamId, playerId, matchId);
     return res.status(200).json(result);
   } catch (error) {
     console.error("Error al seleccionar jugador:", error);

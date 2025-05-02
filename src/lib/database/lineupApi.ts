@@ -9,10 +9,15 @@ export async function savePlayerPosition(
   teamId: string,
   playerId: string,
   position: PlayerPosition,
-  positionOrder: number = 0
+  positionOrder: number = 0,
+  matchId?: string
 ) {
   try {
-    console.log("Checking existing position for:", { teamId, playerId });
+    console.log("Checking existing position for:", {
+      teamId,
+      playerId,
+      matchId,
+    });
 
     // Convert playerId to string if it's not already
     const playerIdStr = String(playerId);
@@ -22,7 +27,8 @@ export async function savePlayerPosition(
       .from("team_player_positions")
       .select("id")
       .eq("team_id", teamId)
-      .eq("player_id", playerIdStr);
+      .eq("player_id", playerIdStr)
+      .eq(matchId ? "match_id" : "match_id", matchId || null);
 
     if (selectError) {
       console.error("Error checking existing position:", selectError);
@@ -51,6 +57,7 @@ export async function savePlayerPosition(
         playerId: playerIdStr,
         position,
         positionOrder,
+        matchId,
       });
       // Crear una nueva asignación
       const { error: insertError } = await supabase
@@ -61,6 +68,7 @@ export async function savePlayerPosition(
           player_id: playerIdStr,
           position,
           position_order: positionOrder,
+          match_id: matchId || null,
         });
 
       if (insertError) {
@@ -79,13 +87,27 @@ export async function savePlayerPosition(
 /**
  * Elimina la asignación de un jugador de un equipo
  */
-export async function removePlayerFromTeam(teamId: string, playerId: string) {
+export async function removePlayerFromTeam(
+  teamId: string,
+  playerId: string,
+  matchId?: string
+) {
   try {
-    const { error } = await supabase
+    // Build query based on whether matchId is provided
+    let query = supabase
       .from("team_player_positions")
       .delete()
       .eq("team_id", teamId)
       .eq("player_id", playerId);
+
+    // Add match_id filter if provided, otherwise filter for null match_id
+    if (matchId) {
+      query = query.eq("match_id", matchId);
+    } else {
+      query = query.is("match_id", null);
+    }
+
+    const { error } = await query;
 
     if (error) throw error;
 
@@ -99,13 +121,22 @@ export async function removePlayerFromTeam(teamId: string, playerId: string) {
 /**
  * Carga las alineaciones de todos los equipos
  */
-export async function loadTeamLineups(): Promise<TeamLineup> {
+export async function loadTeamLineups(matchId?: string): Promise<TeamLineup> {
   try {
     // 1. Obtener todas las asignaciones de jugadores a equipos
-    const { data: positionsData, error: positionsError } = await supabase
+    let query = supabase
       .from("team_player_positions")
       .select("*")
       .order("position_order");
+
+    // Filter by match_id if provided, otherwise get general positions (null match_id)
+    if (matchId) {
+      query = query.eq("match_id", matchId);
+    } else {
+      query = query.is("match_id", null);
+    }
+
+    const { data: positionsData, error: positionsError } = await query;
 
     if (positionsError) throw positionsError;
 
@@ -184,8 +215,8 @@ export async function loadTeamLineups(): Promise<TeamLineup> {
     console.error("Error al cargar las alineaciones:", error);
     return {
       borjas: {
-        id: "borjas",
-        name: "Casper",
+        id: "Equipo A",
+        name: "Equipo A",
         players: {
           GK: [],
           CL: [],
@@ -197,8 +228,8 @@ export async function loadTeamLineups(): Promise<TeamLineup> {
         },
       },
       nietos: {
-        id: "nietos",
-        name: "NietakO",
+        id: "Equipo B",
+        name: "Equipo B",
         players: {
           GK: [],
           CL: [],
@@ -214,18 +245,70 @@ export async function loadTeamLineups(): Promise<TeamLineup> {
 }
 
 /**
- * Limpia todas las asignaciones de jugadores a equipos
+ * Elimina todas las posiciones de jugadores en equipos
  */
-export async function clearTeamLineups() {
+export async function clearTeamLineups(matchId?: string) {
   try {
-    const { error } = await supabase
-      .from("team_player_positions")
-      .delete()
-      .neq("id", "placeholder");
+    // Build query based on whether matchId is provided
+    let query = supabase.from("team_player_positions").delete();
+
+    if (matchId) {
+      // Delete only match-specific positions
+      query = query.eq("match_id", matchId);
+    } else {
+      // Delete only general positions (null match_id)
+      query = query.is("match_id", null);
+    }
+
+    const { error } = await query;
+
     if (error) throw error;
+
     return { success: true };
   } catch (error) {
-    console.error("Error al limpiar las alineaciones:", error);
+    console.error("Error al limpiar alineaciones:", error);
     return { success: false, error };
+  }
+}
+
+/**
+ * Create a match lineup entry to track match-specific lineups
+ */
+export async function createMatchLineup(matchId: string, teamId: string) {
+  try {
+    const { data, error } = await supabase
+      .from("match_lineups")
+      .insert({
+        id: uuidv4(),
+        match_id: matchId,
+        team_id: teamId,
+        is_active: true,
+      })
+      .select("*")
+      .single();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error("Error al crear alineación para el partido:", error);
+    return { success: false, error };
+  }
+}
+
+/**
+ * Get all match lineups for a specific match
+ */
+export async function getMatchLineups(matchId: string) {
+  try {
+    const { data, error } = await supabase
+      .from("match_lineups")
+      .select("*")
+      .eq("match_id", matchId);
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error("Error al obtener alineaciones del partido:", error);
+    return [];
   }
 }

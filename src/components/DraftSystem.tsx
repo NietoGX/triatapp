@@ -7,6 +7,7 @@ import { lineupApi } from "@/lib/api";
 type DraftSystemProps = {
   availablePlayers: AppPlayer[];
   teams: { [key: string]: Team };
+  matchId: string;
   onPlayerPicked: (playerId: string, teamId: string) => void;
   onTeamsReset?: () => Promise<void>;
   onDraftStateChange?: (state: DraftState) => void;
@@ -15,12 +16,14 @@ type DraftSystemProps = {
 export default function DraftSystem({
   availablePlayers,
   teams,
+  matchId,
   onPlayerPicked,
   onTeamsReset,
   onDraftStateChange,
 }: DraftSystemProps) {
   const [draftState, setDraftState] = useState<DraftState>({
     id: "current",
+    match_id: matchId,
     current_team: null,
     is_active: false,
   });
@@ -35,11 +38,13 @@ export default function DraftSystem({
 
   // Cargar el estado inicial del triaje
   useEffect(() => {
-    loadDraftState();
-    if (draftState.is_active) {
-      loadDraftHistory();
+    if (matchId) {
+      loadDraftState();
+      if (draftState.is_active) {
+        loadDraftHistory();
+      }
     }
-  }, []);
+  }, [matchId]);
 
   // Notificar al componente padre cuando cambia el estado del triaje
   useEffect(() => {
@@ -73,7 +78,7 @@ export default function DraftSystem({
   const loadDraftState = async () => {
     try {
       setIsLoading(true);
-      const state = await draftApi.getState();
+      const state = await draftApi.getState(matchId);
       setDraftState(state);
       setIsLoading(false);
     } catch {
@@ -85,7 +90,7 @@ export default function DraftSystem({
   // Cargar el historial del triaje
   const loadDraftHistory = async () => {
     try {
-      const history = await draftApi.getHistory();
+      const history = await draftApi.getHistory(matchId);
       setDraftHistory(history);
     } catch {
       setError("Error al cargar el historial del triaje");
@@ -101,7 +106,7 @@ export default function DraftSystem({
       // Primero, resetear los equipos
       try {
         // Resetear alineaciones en la base de datos
-        await lineupApi.reset();
+        await lineupApi.reset(matchId);
 
         // Si existe una función para resetear equipos en el componente padre, la llamamos
         if (onTeamsReset) {
@@ -115,7 +120,7 @@ export default function DraftSystem({
       }
 
       // Luego, iniciar el triaje
-      const result = await draftApi.start();
+      const result = await draftApi.start(matchId);
 
       if (result.success) {
         await loadDraftState();
@@ -136,7 +141,7 @@ export default function DraftSystem({
     try {
       setIsLoading(true);
       setError(null);
-      const result = await draftApi.end();
+      const result = await draftApi.end(matchId);
 
       if (result.success) {
         await loadDraftState();
@@ -167,7 +172,8 @@ export default function DraftSystem({
       setError(null);
       const result = await draftApi.pickPlayer(
         draftState.current_team,
-        playerId
+        playerId,
+        matchId
       );
 
       if (result.success) {

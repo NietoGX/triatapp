@@ -7,6 +7,7 @@ type SavePositionRequest = {
   playerId: string;
   position: PlayerPosition;
   order?: number;
+  matchId?: string;
 };
 
 /**
@@ -30,6 +31,7 @@ export default async function handler(
       playerId,
       position,
       order = 0,
+      matchId = undefined,
     } = req.body as SavePositionRequest;
 
     if (!teamId || !playerId || !position) {
@@ -42,8 +44,15 @@ export default async function handler(
       playerId,
       position,
       order,
+      matchId,
     });
-    const result = await savePlayerPosition(teamId, playerId, position, order);
+    const result = await savePlayerPosition(
+      teamId,
+      playerId,
+      position,
+      order,
+      matchId
+    );
     console.log("Save result:", result);
 
     if (result.success) {
