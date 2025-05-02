@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 import { v4 as uuidv4 } from "uuid";
-import { Match, PlayerMatchStats } from "./types";
+import { Match, MatchStatus, PlayerMatchStats } from "./types";
 
 /**
  * Get all matches
@@ -23,19 +23,22 @@ export async function getAllMatches(): Promise<Match[]> {
 /**
  * Get a match by ID
  */
-export async function getMatchById(id: string): Promise<Match | null> {
+export async function getMatchById(
+  matchId: string
+): Promise<{ success: boolean; match?: Match; error?: unknown }> {
   try {
     const { data, error } = await supabase
       .from("matches")
       .select("*")
-      .eq("id", id)
+      .eq("id", matchId)
       .single();
 
     if (error) throw error;
-    return data;
+
+    return { success: true, match: data };
   } catch (error) {
-    console.error("Error fetching match:", error);
-    return null;
+    console.error(`Error getting match ${matchId}:`, error);
+    return { success: false, error };
   }
 }
 
@@ -43,110 +46,156 @@ export async function getMatchById(id: string): Promise<Match | null> {
  * Create a new match
  */
 export async function createMatch(
-  matchData: Omit<Match, "id" | "created_at" | "updated_at">
-): Promise<Match | null> {
+  name: string,
+  date: string,
+  availablePlayers: string[]
+): Promise<{ success: boolean; match?: Match; error?: unknown }> {
   try {
-    const id = uuidv4();
+    const matchId = uuidv4();
+    const now = new Date().toISOString();
 
-    // Create a simplified match object with only the required fields
-    const newMatch = {
-      id,
-      name: matchData.name,
-      date: matchData.date,
-      // Don't include timestamp fields - let the database defaults handle them
-    };
-
-    console.log(
-      "Attempting to create match with data:",
-      JSON.stringify(newMatch, null, 2)
-    );
-
-    // First try to insert without selecting to see if there's an error
-    const { error: insertError } = await supabase
+    // Insert new match with PENDING status
+    const { data: match, error: matchError } = await supabase
       .from("matches")
-      .insert(newMatch);
-
-    if (insertError) {
-      console.error("Error inserting match:", insertError);
-      throw insertError;
-    }
-
-    // Now fetch the inserted record
-    const { data, error: selectError } = await supabase
-      .from("matches")
+      .insert({
+        id: matchId,
+        name,
+        date,
+        status: "PENDING",
+        created_at: now,
+        updated_at: now,
+      })
       .select("*")
-      .eq("id", id)
       .single();
 
-    if (selectError) {
-      console.error("Error fetching created match:", selectError);
-      throw selectError;
+    if (matchError) throw matchError;
+
+    // Create available player entries for this match
+    if (availablePlayers && availablePlayers.length > 0) {
+      const availablePlayersData = availablePlayers.map((playerId) => ({
+        id: uuidv4(),
+        match_id: matchId,
+        player_id: playerId,
+        is_available: true,
+        created_at: now,
+        updated_at: now,
+      }));
+
+      const { error: availableError } = await supabase
+        .from("match_available_players")
+        .insert(availablePlayersData);
+
+      if (availableError) throw availableError;
     }
 
-    console.log("Successfully created match:", data);
-    return data;
+    return { success: true, match };
   } catch (error) {
     console.error("Error creating match:", error);
-    return null;
+    return { success: false, error };
   }
 }
 
 /**
- * Update player stats for a match
+ * Update match status
  */
-export async function savePlayerMatchStats(
+export async function updateMatchStatus(
   matchId: string,
-  playerId: string,
-  teamId: string,
-  stats: {
-    goals?: number;
-    assists?: number;
-    saves?: number;
-    goals_saved?: number;
-  }
+  status: MatchStatus
 ): Promise<{ success: boolean; error?: unknown }> {
   try {
-    // First check if there's an existing record
-    const { data: existingData, error: selectError } = await supabase
+    const { error } = await supabase
+      .from("matches")
+      .update({
+        status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", matchId);
+
+    if (error) throw error;
+
+    return { success: true };
+  } catch (error) {
+    console.error(`Error updating match ${matchId} status:`, error);
+    return { success: false, error };
+  }
+}
+
+/**
+ * Get player stats for a match
+ */
+export async function getMatchStats(
+  matchId: string
+): Promise<{ success: boolean; stats?: PlayerMatchStats[]; error?: unknown }> {
+  try {
+    const { data, error } = await supabase
+      .from("player_match_stats")
+      .select("*")
+      .eq("match_id", matchId);
+
+    if (error) throw error;
+
+    return { success: true, stats: data || [] };
+  } catch (error) {
+    console.error(`Error getting stats for match ${matchId}:`, error);
+    return { success: false, error };
+  }
+}
+
+/**
+ * Save or update player statistics for a match
+ */
+export async function savePlayerMatchStats(statsData: {
+  match_id: string;
+  player_id: string;
+  team_id: string;
+  goals: number;
+  assists: number;
+  saves: number;
+}): Promise<{ success: boolean; error?: unknown }> {
+  try {
+    // Check if stats already exist for this player in this match
+    const { data: existingStats, error: queryError } = await supabase
       .from("player_match_stats")
       .select("id")
-      .eq("match_id", matchId)
-      .eq("player_id", playerId)
-      .eq("team_id", teamId);
+      .eq("match_id", statsData.match_id)
+      .eq("player_id", statsData.player_id)
+      .single();
 
-    if (selectError) throw selectError;
+    if (queryError && queryError.code !== "PGRST116") {
+      console.error("Error checking existing stats:", queryError);
+      return { success: false, error: queryError };
+    }
 
-    const now = new Date().toISOString();
-
-    if (existingData && existingData.length > 0) {
-      // Update existing record
-      const { error: updateError } = await supabase
+    // If stats exist, update them, otherwise insert new record
+    if (existingStats?.id) {
+      const { error } = await supabase
         .from("player_match_stats")
         .update({
-          ...stats,
-          updated_at: now,
+          goals: statsData.goals,
+          assists: statsData.assists,
+          saves: statsData.saves,
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", existingData[0].id);
+        .eq("id", existingStats.id);
 
-      if (updateError) throw updateError;
+      if (error) {
+        console.error("Error updating player match stats:", error);
+        return { success: false, error };
+      }
     } else {
-      // Create new record
-      const { error: insertError } = await supabase
-        .from("player_match_stats")
-        .insert({
-          id: uuidv4(),
-          match_id: matchId,
-          player_id: playerId,
-          team_id: teamId,
-          goals: stats.goals || 0,
-          assists: stats.assists || 0,
-          saves: stats.saves || 0,
-          goals_saved: stats.goals_saved || 0,
-          created_at: now,
-          updated_at: now,
-        });
+      const { error } = await supabase.from("player_match_stats").insert({
+        match_id: statsData.match_id,
+        player_id: statsData.player_id,
+        team_id: statsData.team_id,
+        goals: statsData.goals,
+        assists: statsData.assists,
+        saves: statsData.saves,
+      });
 
-      if (insertError) throw insertError;
+      if (error) {
+        console.error("Error inserting player match stats:", error);
+        return { success: false, error };
+      }
     }
 
     return { success: true };
@@ -157,42 +206,38 @@ export async function savePlayerMatchStats(
 }
 
 /**
- * Get all stats for a specific match
- */
-export async function getMatchStats(
-  matchId: string
-): Promise<PlayerMatchStats[]> {
-  try {
-    const { data, error } = await supabase
-      .from("player_match_stats")
-      .select("*")
-      .eq("match_id", matchId);
-
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error("Error fetching match stats:", error);
-    return [];
-  }
-}
-
-/**
  * Get available players for a match
  */
-export async function getMatchAvailablePlayers(
-  matchId: string
-): Promise<string[]> {
+export async function getMatchAvailablePlayers(matchId: string) {
   try {
-    const { data, error } = await supabase
+    // Get player IDs from match_available_players
+    const { data: availablePlayers, error: availableError } = await supabase
       .from("match_available_players")
       .select("player_id")
       .eq("match_id", matchId)
       .eq("is_available", true);
 
-    if (error) throw error;
-    return data?.map((record) => record.player_id) || [];
+    if (availableError) throw availableError;
+
+    if (!availablePlayers || availablePlayers.length === 0) {
+      return [];
+    }
+
+    // Get full player details
+    const playerIds = availablePlayers.map((p) => p.player_id);
+    const { data: players, error: playersError } = await supabase
+      .from("players")
+      .select("*")
+      .in("id", playerIds);
+
+    if (playersError) throw playersError;
+
+    return players || [];
   } catch (error) {
-    console.error("Error fetching match available players:", error);
+    console.error(
+      `Error getting available players for match ${matchId}:`,
+      error
+    );
     return [];
   }
 }

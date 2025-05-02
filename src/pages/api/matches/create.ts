@@ -1,17 +1,22 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createMatch } from "@/lib/database/matchApi";
 import { Match } from "@/lib/database/types";
-import { v4 as uuidv4 } from "uuid";
-import { supabase } from "@/lib/database/supabase";
 
 type ErrorResponse = {
   error: string;
   details?: unknown;
 };
 
+type CreateMatchRequest = {
+  name: string;
+  date: string;
+  location?: string;
+  availablePlayers: string[];
+};
+
 /**
- * API endpoint for creating new matches
- * POST: Creates a new match with the given name and date
+ * API endpoint for creating a new match
+ * POST: Create a new match
  */
 export default async function handler(
   req: NextApiRequest,
@@ -23,12 +28,11 @@ export default async function handler(
   }
 
   try {
-    const { name, date, availablePlayers } = req.body;
+    const { name, date, availablePlayers } = req.body as CreateMatchRequest;
 
     if (!name || !date) {
       return res.status(400).json({
-        error: "Missing required fields",
-        details: "Both name and date are required",
+        error: "Name and date are required fields",
       });
     }
 
@@ -45,49 +49,21 @@ export default async function handler(
 
     console.log("Creating match with data:", { name, date, availablePlayers });
 
-    // Create the match first
-    const match = await createMatch({ name, date });
+    const result = await createMatch(name, date, availablePlayers || []);
 
-    if (!match) {
-      return res.status(500).json({
+    if (result.success && result.match) {
+      res.status(201).json(result.match);
+    } else {
+      res.status(500).json({
         error: "Failed to create match",
+        details: result.error,
       });
     }
-
-    // Then save the available players for this match
-    const now = new Date().toISOString();
-    const availablePlayersData = availablePlayers.map((playerId) => ({
-      id: uuidv4(),
-      match_id: match.id,
-      player_id: playerId,
-      is_available: true,
-      created_at: now,
-      updated_at: now,
-    }));
-
-    const { error: insertError } = await supabase
-      .from("match_available_players")
-      .insert(availablePlayersData);
-
-    if (insertError) {
-      console.error("Error inserting available players:", insertError);
-      // Return the match anyway, but log the error
-      console.warn("Match created but failed to save available players");
-    } else {
-      console.log(
-        `Successfully added ${availablePlayers.length} players to match ${match.id}`
-      );
-    }
-
-    return res.status(201).json(match);
   } catch (error) {
-    console.error("Error creating match:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-
-    return res.status(500).json({
-      error: "Failed to create match",
-      details: errorMessage,
+    console.error("Error in create match API:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      details: error,
     });
   }
 }

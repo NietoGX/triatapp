@@ -14,7 +14,13 @@ import TeamContainer, {
 import DraftSystem from "@/components/DraftSystem";
 import { AppPlayer, PlayerPosition, Team } from "@/types";
 import { matchApi, playerApi, lineupApi } from "@/lib/api";
-import { Match, DraftState } from "@/lib/database/types";
+import {
+  Match,
+  DraftState,
+  PlayerMatchStats,
+  MatchStatus,
+} from "@/lib/database/types";
+import PlayerStatsForm from "@/components/PlayerStatsForm";
 
 // Default empty teams structure
 const DEFAULT_TEAMS: { [key: string]: Team } = {
@@ -66,6 +72,13 @@ export default function MatchDetailPage() {
   const [teams, setTeams] = useState<{ [key: string]: Team }>(DEFAULT_TEAMS);
   const [selectedPosition, setSelectedPosition] = useState<{
     position: PlayerPosition;
+    teamId: string;
+  } | null>(null);
+
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [matchStats, setMatchStats] = useState<PlayerMatchStats[]>([]);
+  const [selectedPlayerForStats, setSelectedPlayerForStats] = useState<{
+    player: AppPlayer;
     teamId: string;
   } | null>(null);
 
@@ -146,6 +159,31 @@ export default function MatchDetailPage() {
       loadMatch();
     }
   }, [isClient, matchId]);
+
+  useEffect(() => {
+    async function loadMatchStats() {
+      if (!matchId || typeof matchId !== "string") return;
+
+      try {
+        const response = await matchApi.getById(matchId);
+
+        // Set match stats ensuring it's an array
+        if (response.stats && Array.isArray(response.stats)) {
+          setMatchStats(response.stats);
+        } else {
+          console.warn("Match stats is not an array, setting to empty array");
+          setMatchStats([]);
+        }
+      } catch (error) {
+        console.error("Error loading match stats:", error);
+        setMatchStats([]);
+      }
+    }
+
+    if (match) {
+      loadMatchStats();
+    }
+  }, [match, matchId]);
 
   const formatDate = (dateString: string) => {
     const options: Intl.DateTimeFormatOptions = {
@@ -370,6 +408,65 @@ export default function MatchDetailPage() {
     setIsDraftActive(newState.is_active);
   };
 
+  // Function to update match status
+  const handleUpdateStatus = async (newStatus: MatchStatus) => {
+    if (!matchId || typeof matchId !== "string" || !match) return;
+
+    try {
+      setIsUpdatingStatus(true);
+      const result = await matchApi.updateStatus(matchId, newStatus);
+
+      if (result.success) {
+        // Update local match state with new status
+        setMatch({ ...match, status: newStatus });
+
+        // Show success message
+        alert(`Match status updated to ${newStatus}`);
+      } else {
+        // Show error message
+        alert("Failed to update match status");
+      }
+    } catch (error) {
+      console.error("Error updating match status:", error);
+      alert("Error updating match status");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  // Function to refresh match stats
+  const refreshMatchStats = async () => {
+    if (!matchId || typeof matchId !== "string") return;
+
+    try {
+      const statsResult = await matchApi.getStats(matchId);
+      if (statsResult.success && statsResult.stats) {
+        if (Array.isArray(statsResult.stats)) {
+          setMatchStats(statsResult.stats);
+        } else {
+          console.warn("Match stats is not an array, setting to empty array");
+          setMatchStats([]);
+        }
+      } else {
+        setMatchStats([]);
+      }
+    } catch (error) {
+      console.error("Error refreshing match stats:", error);
+      setMatchStats([]);
+    }
+  };
+
+  // Function to open stats form for a player
+  const handleOpenPlayerStats = (player: AppPlayer, teamId: string) => {
+    setSelectedPlayerForStats({ player, teamId });
+  };
+
+  // Function called after stats are saved
+  const handleStatsSaved = () => {
+    refreshMatchStats();
+    setSelectedPlayerForStats(null);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
@@ -400,6 +497,194 @@ export default function MatchDetailPage() {
     );
   }
 
+  // Add this to the UI component, where appropriate
+  const renderMatchActions = () => {
+    if (!match) return null;
+
+    return (
+      <div className="flex gap-2 mt-2">
+        {match.status === "PENDING" && (
+          <button
+            onClick={() => handleUpdateStatus("FINISHED")}
+            disabled={isUpdatingStatus}
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors disabled:opacity-50"
+          >
+            {isUpdatingStatus ? "Updating..." : "Mark as Finished"}
+          </button>
+        )}
+
+        {match.status === "FINISHED" && (
+          <button
+            onClick={() => handleUpdateStatus("PENDING")}
+            disabled={isUpdatingStatus}
+            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded transition-colors disabled:opacity-50"
+          >
+            {isUpdatingStatus ? "Updating..." : "Reopen Match"}
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  // Add this to the header section of your UI
+  const renderMatchStatus = () => {
+    if (!match) return null;
+
+    return (
+      <div
+        className={`text-sm font-medium px-2 py-1 rounded inline-block ${
+          match.status === "FINISHED"
+            ? "bg-green-600/30 text-green-200"
+            : "bg-yellow-600/30 text-yellow-200"
+        }`}
+      >
+        {match.status === "FINISHED" ? "Finished" : "Pending"}
+      </div>
+    );
+  };
+
+  // Add this to your UI to display match stats
+  const renderPlayerStats = () => {
+    // Ensure matchStats is an array before trying to map over it
+    if (!matchStats || !Array.isArray(matchStats) || matchStats.length === 0) {
+      return (
+        <div className="mt-8">
+          <h3 className="text-xl font-bold text-white mb-4">
+            Match Statistics
+          </h3>
+          <div className="bg-gray-800/60 p-4 rounded-lg text-gray-400">
+            No statistics available for this match yet.
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-8">
+        <h3 className="text-xl font-bold text-white mb-4">Match Statistics</h3>
+        <div className="bg-gray-800/60 p-4 rounded-lg">
+          <table className="w-full text-gray-300">
+            <thead>
+              <tr className="border-b border-gray-700">
+                <th className="text-left py-2">Player</th>
+                <th className="text-center py-2">Team</th>
+                <th className="text-center py-2">Goals</th>
+                <th className="text-center py-2">Assists</th>
+                <th className="text-center py-2">Saves</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matchStats.map((stat) => {
+                // Get player name from available players or lineups
+                const playerName =
+                  availablePlayers.find((p) => p.id === stat.player_id)?.name ||
+                  "Unknown";
+                const teamName =
+                  stat.team_id === "borjas" ? "Borjas" : "Nietos";
+
+                return (
+                  <tr key={stat.id} className="border-b border-gray-700/50">
+                    <td className="py-2">{playerName}</td>
+                    <td className="text-center py-2">{teamName}</td>
+                    <td className="text-center py-2">{stat.goals}</td>
+                    <td className="text-center py-2">{stat.assists}</td>
+                    <td className="text-center py-2">{stat.saves}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  // Add this to your UI to display player list with stats option
+  const renderPlayersWithStatsOption = () => {
+    if (!match || match.status !== "FINISHED") return null;
+
+    const getTeamPlayers = (team: Team) => {
+      // Flatten all positions into a single list of players
+      return Object.values(team.players)
+        .flat()
+        .map((player) => (
+          <li
+            key={player.id}
+            className="flex justify-between items-center p-2 rounded hover:bg-gray-700/60"
+          >
+            <span>{player.name}</span>
+            <button
+              onClick={() => handleOpenPlayerStats(player, team.id)}
+              className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-xs text-white rounded"
+            >
+              Manage Stats
+            </button>
+          </li>
+        ));
+    };
+
+    return (
+      <div className="mt-8">
+        <h3 className="text-xl font-bold text-white mb-4">
+          Player Statistics Management
+        </h3>
+        <div className="bg-gray-800/60 p-4 rounded-lg">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <h4 className="text-lg font-medium text-white mb-3">
+                Borjas Team
+              </h4>
+              <ul className="space-y-1">{getTeamPlayers(teams.borjas)}</ul>
+            </div>
+
+            <div>
+              <h4 className="text-lg font-medium text-white mb-3">
+                Nietos Team
+              </h4>
+              <ul className="space-y-1">{getTeamPlayers(teams.nietos)}</ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Add this modal to your JSX
+  const renderPlayerStatsModal = () => {
+    if (!selectedPlayerForStats) return null;
+
+    let existingStats;
+    if (Array.isArray(matchStats)) {
+      existingStats = matchStats.find(
+        (stat) =>
+          stat.player_id === selectedPlayerForStats.player.id &&
+          stat.team_id === selectedPlayerForStats.teamId
+      );
+    }
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+        <div className="w-full max-w-md">
+          <PlayerStatsForm
+            matchId={matchId as string}
+            player={selectedPlayerForStats.player}
+            teamId={selectedPlayerForStats.teamId}
+            onStatsSaved={handleStatsSaved}
+            existingStats={existingStats}
+          />
+          <div className="flex justify-end">
+            <button
+              onClick={() => setSelectedPlayerForStats(null)}
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <Head>
@@ -424,12 +709,16 @@ export default function MatchDetailPage() {
               </Link>
               {match ? (
                 <div>
-                  <h1 className="text-4xl font-bold text-white mb-2">
-                    {match.name}
-                  </h1>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h1 className="text-4xl font-bold text-white">
+                      {match.name}
+                    </h1>
+                    {renderMatchStatus()}
+                  </div>
                   <p className="text-xl text-gray-300">
                     {formatDate(match.date)}
                   </p>
+                  {renderMatchActions()}
                 </div>
               ) : (
                 <h1 className="text-4xl font-bold text-white mb-2">
@@ -565,10 +854,21 @@ export default function MatchDetailPage() {
                   )}
                 </DndProvider>
               </div>
+
+              {/* Display player stats */}
+              {renderPlayerStats()}
+
+              {/* In your return statement, before the closing main tag */}
+              {match &&
+                match.status === "FINISHED" &&
+                renderPlayersWithStatsOption()}
             </>
           )}
         </div>
       </main>
+
+      {/* At the end of your JSX, before the closing fragment */}
+      {renderPlayerStatsModal()}
     </>
   );
 }

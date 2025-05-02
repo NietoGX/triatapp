@@ -79,6 +79,34 @@ export default function Home() {
       // Load available players for this match
       const matchPlayers = await matchApi.getAvailablePlayers(matchId);
 
+      // If we have no available players, try to load all players
+      if (!matchPlayers || matchPlayers.length === 0) {
+        console.warn(
+          "No available players for this match, loading all players"
+        );
+        const allPlayers = await playerApi.getAll();
+
+        // Map players to app format
+        const appPlayers: AppPlayer[] = allPlayers.map((p) => ({
+          id: p.id,
+          name: p.name,
+          rating: p.rating,
+          position: p.position as PlayerPosition | null,
+          team: null,
+          stats: {
+            goals: p.goals,
+            assists: p.assists,
+            saves: p.saves,
+            goalsSaved: p.goals_saved,
+          },
+          number: p.number || undefined,
+          nickname: p.nickname || undefined,
+        }));
+
+        setAvailablePlayers(appPlayers);
+        return;
+      }
+
       // Map players to app format
       const appPlayers: AppPlayer[] = matchPlayers.map((p) => ({
         id: p.id,
@@ -97,27 +125,32 @@ export default function Home() {
       }));
 
       // Load match-specific lineups
-      const lineups = await lineupApi.getAll(matchId);
+      try {
+        const lineups = await lineupApi.getAll(matchId);
 
-      if (lineups && (lineups.borjas || lineups.nietos)) {
-        setTeams(lineups);
+        if (lineups && (lineups.borjas || lineups.nietos)) {
+          setTeams(lineups);
 
-        // Filter out players already assigned to teams
-        const assignedPlayerIds = new Set<string>();
+          // Filter out players already assigned to teams
+          const assignedPlayerIds = new Set<string>();
 
-        Object.values(lineups).forEach((team) => {
-          Object.values(team.players).forEach((positionPlayers) => {
-            positionPlayers.forEach((player) => {
-              assignedPlayerIds.add(player.id);
+          Object.values(lineups).forEach((team) => {
+            Object.values(team.players).forEach((positionPlayers) => {
+              positionPlayers.forEach((player) => {
+                assignedPlayerIds.add(player.id);
+              });
             });
           });
-        });
 
-        setAvailablePlayers(
-          appPlayers.filter((player) => !assignedPlayerIds.has(player.id))
-        );
-      } else {
-        // If no lineups exist for this match, show all available players
+          setAvailablePlayers(
+            appPlayers.filter((player) => !assignedPlayerIds.has(player.id))
+          );
+        } else {
+          // If no lineups exist for this match, show all available players
+          setAvailablePlayers(appPlayers);
+        }
+      } catch (error) {
+        console.error("Error loading match lineups:", error);
         setAvailablePlayers(appPlayers);
       }
     } catch (error) {
@@ -374,16 +407,37 @@ export default function Home() {
   };
 
   const handleInitializeDb = async () => {
+    setIsInitializing(true);
     try {
-      setIsInitializing(true);
-      // Inicializar la base de datos con datos de prueba
-      const result = await teamApi.initialize();
-      if (result) {
+      // Initialize teams first
+      await teamApi.initialize();
+
+      // Then initialize players
+      const result = await playerApi.initialize();
+
+      if (result.success) {
         setDbInitialized(true);
-        console.log("Base de datos inicializada correctamente");
+        // Reload data after initialization
+        const dbPlayers = await playerApi.getAll();
+        const appPlayers = dbPlayers.map((p) => ({
+          id: p.id,
+          name: p.name,
+          rating: p.rating,
+          position: p.position as PlayerPosition | null,
+          team: null,
+          stats: {
+            goals: p.goals,
+            assists: p.assists,
+            saves: p.saves,
+            goalsSaved: p.goals_saved,
+          },
+          number: p.number || undefined,
+          nickname: p.nickname || undefined,
+        }));
+        setAvailablePlayers(appPlayers);
       }
     } catch (error) {
-      console.error("Error al inicializar la base de datos:", error);
+      console.error("Error initializing database:", error);
     } finally {
       setIsInitializing(false);
     }
@@ -511,12 +565,12 @@ export default function Home() {
               >
                 Partidos
               </Link>
-              <Link
+              {/* <Link
                 href="/db-setup"
                 className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
               >
                 Config BD
-              </Link>
+              </Link> */}
               <button
                 onClick={() => setShowDraftSystem(!showDraftSystem)}
                 className={`px-4 py-2 ${

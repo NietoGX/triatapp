@@ -36,15 +36,15 @@ export default async function handler(
 
     if (!existingTeams?.find((team) => team.id === "borjas")) {
       teamsToInsert.push({
-        id: "borjas",
-        name: "Casper",
+        id: "Equipo A",
+        name: "Equipo A",
       });
     }
 
     if (!existingTeams?.find((team) => team.id === "nietos")) {
       teamsToInsert.push({
-        id: "nietos",
-        name: "NietakO",
+        id: "Equipo B",
+        name: "Equipo B",
       });
     }
 

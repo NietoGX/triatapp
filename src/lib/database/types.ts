@@ -77,10 +77,13 @@ export type DraftError = {
 };
 
 // Match types
+export type MatchStatus = "PENDING" | "FINISHED";
+
 export type Match = {
   id: string;
   name: string;
   date: string;
+  status: MatchStatus;
   created_at: string;
   updated_at: string;
 };

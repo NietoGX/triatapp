@@ -7,6 +7,7 @@ import type {
   DraftError,
   Match,
   PlayerMatchStats,
+  MatchStatus,
 } from "./database/types";
 
 // Base API URL
@@ -286,11 +287,14 @@ export const matchApi = {
   getAvailablePlayers: async (id: string) => {
     try {
       const response = await fetch(`/api/matches/${id}/available-players`);
-      if (!response.ok) throw new Error("Error fetching available players");
+      if (!response.ok) {
+        console.warn(`No available players found for match ${id}`);
+        return []; // Return empty array instead of throwing error
+      }
       return (await response.json()) as Player[];
     } catch (error) {
       console.error(`Error fetching available players for match ${id}:`, error);
-      throw error;
+      return []; // Return empty array on error
     }
   },
 
@@ -316,26 +320,38 @@ export const matchApi = {
     }
   },
 
-  // Save player stats for a match
+  // Update match status
+  updateStatus: async (
+    matchId: string,
+    status: MatchStatus
+  ): Promise<{ success: boolean }> => {
+    return fetchAPI(`/api/matches/${matchId}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  // Get match statistics
+  getStats: async (
+    matchId: string
+  ): Promise<{ success: boolean; stats?: PlayerMatchStats[] }> => {
+    return fetchAPI(`/api/matches/${matchId}/stats`);
+  },
+
+  // Save player statistics for a match
   saveStats: async (
     matchId: string,
-    playerId: string,
-    teamId: string,
-    stats: {
+    playerStats: {
+      player_id: string;
+      team_id: string;
       goals?: number;
       assists?: number;
       saves?: number;
-      goals_saved?: number;
     }
-  ) => {
-    return fetchAPI<{ success: boolean }>("/matches/stats", {
+  ): Promise<{ success: boolean }> => {
+    return fetchAPI(`/api/matches/${matchId}/stats`, {
       method: "POST",
-      body: JSON.stringify({
-        matchId,
-        playerId,
-        teamId,
-        ...stats,
-      }),
+      body: JSON.stringify(playerStats),
     });
   },
 };
