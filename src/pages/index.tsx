@@ -7,7 +7,9 @@ import { isMobile } from "react-device-detect";
 import Link from "next/link";
 
 import AvailablePlayers from "@/components/AvailablePlayers";
-import TeamContainer from "@/components/TeamContainer";
+import TeamContainer, {
+  PlayerSelectionModal,
+} from "@/components/TeamContainer";
 import DraftSystem from "@/components/DraftSystem";
 import { AppPlayer, PlayerPosition, Team } from "@/types";
 import { playerApi, lineupApi, teamApi, draftApi } from "@/lib/api";
@@ -56,6 +58,10 @@ export default function Home() {
   // Players and teams state
   const [availablePlayers, setAvailablePlayers] = useState<AppPlayer[]>([]);
   const [teams, setTeams] = useState<{ [key: string]: Team }>(DEFAULT_TEAMS);
+  const [selectedPosition, setSelectedPosition] = useState<{
+    position: PlayerPosition;
+    teamId: string;
+  } | null>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -395,6 +401,19 @@ export default function Home() {
 
   const backend = isMobileView ? TouchBackend : HTML5Backend;
 
+  const handlePositionClick = (position: PlayerPosition, teamId: string) => {
+    if (isMobileView && !isDraftActive) {
+      setSelectedPosition({ position, teamId });
+    }
+  };
+
+  const handlePlayerSelect = (player: AppPlayer, position: PlayerPosition) => {
+    if (selectedPosition) {
+      handlePlayerDrop(player.id, selectedPosition.teamId, position);
+      setSelectedPosition(null);
+    }
+  };
+
   return (
     <>
       <Head>
@@ -496,6 +515,7 @@ export default function Home() {
                     isMobileView={isMobileView}
                     availablePlayers={availablePlayers}
                     isDropDisabled={isDraftActive}
+                    onPositionClick={handlePositionClick}
                   />
                   <TeamContainer
                     team={teams.nietos}
@@ -504,6 +524,7 @@ export default function Home() {
                     isMobileView={isMobileView}
                     availablePlayers={availablePlayers}
                     isDropDisabled={isDraftActive}
+                    onPositionClick={handlePositionClick}
                   />
                 </div>
 
@@ -516,6 +537,36 @@ export default function Home() {
                   />
                 </div>
               </div>
+
+              {/* Modal de selección de jugadores */}
+              {selectedPosition && (
+                <PlayerSelectionModal
+                  selectedPosition={selectedPosition.position}
+                  availablePlayers={availablePlayers}
+                  onPlayerSelect={handlePlayerSelect}
+                  onClose={() => setSelectedPosition(null)}
+                  getPositionName={(position) => {
+                    switch (position) {
+                      case "GK":
+                        return "Portero";
+                      case "CL":
+                        return "Central Izq.";
+                      case "CR":
+                        return "Central Der.";
+                      case "ML":
+                        return "Medio Izq.";
+                      case "MR":
+                        return "Medio Der.";
+                      case "ST":
+                        return "Delantero";
+                      case "SUB":
+                        return "Suplentes";
+                      default:
+                        return position;
+                    }
+                  }}
+                />
+              )}
             </DndProvider>
           )}
         </div>

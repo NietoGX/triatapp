@@ -28,6 +28,7 @@ export default function DraftSystem({
   const [draftHistory, setDraftHistory] = useState<DraftHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isPickingPlayer, setIsPickingPlayer] = useState(false);
+  const [lastPickTime, setLastPickTime] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [fadeEffect, setFadeEffect] = useState(false);
   const [showTurnIndicator, setShowTurnIndicator] = useState(false);
@@ -152,6 +153,13 @@ export default function DraftSystem({
 
   // Seleccionar un jugador en el triaje
   const handlePickPlayer = async (playerId: string) => {
+    // Prevenir selecciones múltiples rápidas
+    const now = Date.now();
+    if (now - lastPickTime < 300) {
+      return; // Ignorar clics rápidos
+    }
+    setLastPickTime(now);
+
     if (!draftState.current_team || isPickingPlayer) return;
 
     try {
@@ -173,10 +181,15 @@ export default function DraftSystem({
         setError(result.error?.message || "Error al seleccionar jugador");
       }
 
-      setIsPickingPlayer(false);
+      // Añadir un pequeño retardo para prevenir dobles clicks
+      setTimeout(() => {
+        setIsPickingPlayer(false);
+      }, 300);
     } catch {
       setError("Error al seleccionar jugador");
-      setIsPickingPlayer(false);
+      setTimeout(() => {
+        setIsPickingPlayer(false);
+      }, 300);
     }
   };
 
@@ -309,29 +322,64 @@ export default function DraftSystem({
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {availablePlayers.map((player) => (
-              <div
-                key={player.id}
-                onClick={() => handlePickPlayer(player.id)}
-                className={`
-                  p-3 rounded-lg transition-all duration-200
-                  ${
-                    draftState.current_team && !isPickingPlayer
-                      ? "hover:bg-blue-600 bg-gray-700/60 cursor-pointer"
-                      : "bg-gray-700/30 cursor-not-allowed"
-                  }
-                  ${isPickingPlayer ? "opacity-50" : ""}
-                `}
-              >
-                <p className="text-white font-medium">{player.name}</p>
-                <div className="flex justify-between text-sm">
-                  <span className="text-yellow-400">⭐ {player.rating}</span>
-                  <span className="text-gray-300">
-                    {player.position || "Sin posición"}
-                  </span>
+            {availablePlayers.map((player) => {
+              const isSelectable = draftState.current_team && !isPickingPlayer;
+              return (
+                <div
+                  key={player.id}
+                  onClick={() => isSelectable && handlePickPlayer(player.id)}
+                  onTouchStart={(e) => {
+                    if (isSelectable) {
+                      e.currentTarget.style.transform = "scale(0.98)";
+                      e.currentTarget.style.backgroundColor =
+                        "rgba(59, 130, 246, 0.3)";
+                    }
+                  }}
+                  onTouchMove={(e) => {
+                    if (isSelectable) {
+                      // Restaurar el estado normal si el dedo se mueve (para evitar selección accidental)
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.backgroundColor = "";
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    if (isSelectable) {
+                      e.preventDefault();
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.backgroundColor = "";
+                      handlePickPlayer(player.id);
+                    }
+                  }}
+                  onTouchCancel={(e) => {
+                    if (isSelectable) {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.backgroundColor = "";
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Seleccionar a ${player.name}`}
+                  className={`
+                    p-3 rounded-lg transition-all duration-150
+                    ${
+                      isSelectable
+                        ? "hover:bg-blue-600 active:bg-blue-700 bg-gray-700/60 cursor-pointer"
+                        : "bg-gray-700/30 cursor-not-allowed"
+                    }
+                    ${isPickingPlayer ? "opacity-50" : ""}
+                    tap-highlight-color-transparent user-select-none
+                  `}
+                >
+                  <p className="text-white font-medium">{player.name}</p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-yellow-400">⭐ {player.rating}</span>
+                    <span className="text-gray-300">
+                      {player.position || "Sin posición"}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -394,6 +442,15 @@ export default function DraftSystem({
         .animate-gradient-x {
           background-size: 200% 100%;
           animation: gradientX 2s linear infinite;
+        }
+
+        .tap-highlight-color-transparent {
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .user-select-none {
+          -webkit-user-select: none;
+          user-select: none;
         }
       `}</style>
     </div>

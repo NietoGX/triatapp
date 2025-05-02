@@ -13,6 +13,7 @@ interface TeamContainerProps {
   isMobileView?: boolean;
   availablePlayers?: AppPlayer[];
   isDropDisabled?: boolean;
+  onPositionClick?: (position: PlayerPosition, teamId: string) => void;
 }
 
 export const TeamContainer = ({
@@ -20,12 +21,12 @@ export const TeamContainer = ({
   onPlayerDrop,
   onPlayerRemove,
   isMobileView = false,
-  availablePlayers = [],
   isDropDisabled = false,
+  onPositionClick,
 }: TeamContainerProps) => {
+  const [selectedPlayer, setSelectedPlayer] = useState<AppPlayer | null>(null);
   const [selectedPosition, setSelectedPosition] =
     useState<PlayerPosition | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<AppPlayer | null>(null);
 
   // Asegurarnos de que todas las posiciones existen en el objeto team.players
   useEffect(() => {
@@ -90,16 +91,11 @@ export const TeamContainer = ({
       // Si ya está seleccionada, la deseleccionamos
       if (selectedPosition === position) {
         setSelectedPosition(null);
+        onPositionClick?.(position, team.id);
       } else {
         setSelectedPosition(position);
+        onPositionClick?.(position, team.id);
       }
-    }
-  };
-
-  const handlePlayerSelect = (player: AppPlayer, position: PlayerPosition) => {
-    if (isMobileView && selectedPosition && !isDropDisabled) {
-      onPlayerDrop(player.id, team.id, position);
-      setSelectedPosition(null);
     }
   };
 
@@ -509,79 +505,93 @@ export const TeamContainer = ({
         </div>
       </div>
 
-      {/* Modal para selección de jugadores (fuera del componente PositionDropZone) */}
-      {selectedPosition &&
-        availablePlayers &&
-        availablePlayers.length > 0 &&
-        isMobileView && (
-          <div className="fixed inset-0 bg-black/80 z-50 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/10">
-              <h4 className="text-white text-lg font-bold">
-                {getPositionName(selectedPosition)} - Elige un jugador
-              </h4>
-              <button
-                onClick={() => setSelectedPosition(null)}
-                className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-full"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4">
-              {availablePlayers.length === 0 ? (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-white/70 text-lg">
-                    No hay jugadores disponibles
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {availablePlayers.map((player) => (
-                    <div
-                      key={player.id}
-                      onClick={() =>
-                        handlePlayerSelect(player, selectedPosition)
-                      }
-                      className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700 text-white p-4 rounded-lg cursor-pointer shadow-md"
-                    >
-                      <div className="flex items-center">
-                        <span className="bg-yellow-500 text-black rounded-full w-10 h-10 flex items-center justify-center mr-3 text-lg font-bold">
-                          {player.rating}
-                        </span>
-                        <span className="text-lg">{player.name}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 border-t border-white/10">
-              <button
-                onClick={() => setSelectedPosition(null)}
-                className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg text-base font-medium"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        )}
-
       {/* Modal de información del jugador */}
       {selectedPlayer && <PlayerInfoModal />}
+    </div>
+  );
+};
+
+// Modal para selección de jugadores (fuera del componente TeamContainer)
+export const PlayerSelectionModal = ({
+  selectedPosition,
+  availablePlayers,
+  onPlayerSelect,
+  onClose,
+  getPositionName,
+}: {
+  selectedPosition: PlayerPosition | null;
+  availablePlayers: AppPlayer[];
+  onPlayerSelect: (player: AppPlayer, position: PlayerPosition) => void;
+  onClose: () => void;
+  getPositionName: (position: PlayerPosition) => string;
+}) => {
+  if (!selectedPosition || availablePlayers.length === 0) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-[100] flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gray-900/90">
+        <h4 className="text-white text-lg font-bold">
+          {getPositionName(selectedPosition)} - Elige un jugador
+        </h4>
+        <button
+          onClick={onClose}
+          className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-full transition-colors"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto bg-gray-900/80">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4">
+          {availablePlayers.map((player) => (
+            <div
+              key={player.id}
+              onClick={() => onPlayerSelect(player, selectedPosition)}
+              className="bg-gray-800/80 backdrop-blur-sm hover:bg-gray-700 text-white p-4 rounded-lg cursor-pointer shadow-md transition-colors"
+            >
+              <div className="flex items-center">
+                <span className="bg-yellow-500 text-black rounded-full w-10 h-10 flex items-center justify-center mr-3 text-lg font-bold">
+                  {player.rating}
+                </span>
+                <div>
+                  <span className="text-lg block">{player.name}</span>
+                  <span className="text-sm text-gray-400">
+                    {player.position || "Sin posición"}
+                  </span>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-gray-400 flex space-x-2">
+                <span>G: {player.stats?.goals || 0}</span>
+                <span>A: {player.stats?.assists || 0}</span>
+                <span>P: {player.stats?.saves || 0}</span>
+                <span>GP: {player.stats?.goalsSaved || 0}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="p-4 border-t border-white/10 bg-gray-900/90">
+        <button
+          onClick={onClose}
+          className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg text-base font-medium transition-colors"
+        >
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 };
