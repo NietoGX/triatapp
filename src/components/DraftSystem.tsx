@@ -35,7 +35,6 @@ export default function DraftSystem({
   const [error, setError] = useState<string | null>(null);
   const [fadeEffect, setFadeEffect] = useState(false);
   const [showTurnIndicator, setShowTurnIndicator] = useState(false);
-  const [touchActive, setTouchActive] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
 
   // Estados para el modal de confirmación
@@ -559,68 +558,69 @@ export default function DraftSystem({
               return (
                 <div
                   key={player.id}
-                  onClick={() => {
-                    // Solo procesar onClick si no hay interacción táctil activa
-                    if (!touchActive && isSelectable) {
-                      handlePlayerSelection(player.id);
-                    }
-                  }}
-                  onTouchStart={(e) => {
-                    if (isSelectable) {
-                      setTouchActive(true);
-                      e.currentTarget.style.transform = "scale(0.98)";
-                      e.currentTarget.style.backgroundColor =
-                        "rgba(34, 197, 94, 0.3)";
-                    }
-                  }}
-                  onTouchMove={(e) => {
-                    if (isSelectable) {
-                      // Restaurar el estado normal si el dedo se mueve (para evitar selección accidental)
-                      e.currentTarget.style.transform = "scale(1)";
-                      e.currentTarget.style.backgroundColor = "";
-                    }
-                  }}
-                  onTouchEnd={(e) => {
-                    if (isSelectable) {
-                      e.preventDefault();
-                      e.currentTarget.style.transform = "scale(1)";
-                      e.currentTarget.style.backgroundColor = "";
-                      handlePlayerSelection(player.id);
-
-                      // Resetear el flag después de un pequeño delay
-                      setTimeout(() => {
-                        setTouchActive(false);
-                      }, 100);
-                    }
-                  }}
-                  onTouchCancel={(e) => {
-                    if (isSelectable) {
-                      e.currentTarget.style.transform = "scale(1)";
-                      e.currentTarget.style.backgroundColor = "";
-                      setTouchActive(false);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Seleccionar a ${player.name}`}
                   className={`
-                    p-3 rounded-lg transition-all duration-150
-                    ${
-                      isSelectable
-                        ? "hover:bg-blue-600 active:bg-blue-700 bg-gray-700/60 cursor-pointer"
-                        : "bg-gray-700/30 cursor-not-allowed"
-                    }
+                    p-3 rounded-lg transition-all duration-150 bg-gray-700/60
                     ${isPickingPlayer ? "opacity-50" : ""}
-                    tap-highlight-color-transparent user-select-none
                   `}
                 >
-                  <p className="text-white font-medium">{player.name}</p>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-yellow-400">⭐ {player.rating}</span>
-                    <span className="text-gray-300">
-                      {player.position || "Sin posición"}
-                    </span>
+                  <div className="mb-3">
+                    <p className="text-white font-medium">{player.name}</p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-yellow-400">
+                        ⭐ {player.rating}
+                      </span>
+                      <span className="text-gray-300">
+                        {player.position || "Sin posición"}
+                      </span>
+                    </div>
                   </div>
+
+                  <button
+                    onClick={() => {
+                      if (isSelectable) {
+                        handlePlayerSelection(player.id);
+                      }
+                    }}
+                    onTouchStart={(e) => {
+                      if (isSelectable) {
+                        e.currentTarget.style.transform = "scale(0.98)";
+                        e.currentTarget.style.backgroundColor =
+                          "rgba(34, 197, 94, 0.6)";
+                      }
+                    }}
+                    onTouchMove={(e) => {
+                      if (isSelectable) {
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.backgroundColor = "";
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      if (isSelectable) {
+                        e.preventDefault();
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.backgroundColor = "";
+                        handlePlayerSelection(player.id);
+                      }
+                    }}
+                    onTouchCancel={(e) => {
+                      if (isSelectable) {
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.backgroundColor = "";
+                      }
+                    }}
+                    disabled={!isSelectable}
+                    className={`
+                      w-full py-1.5 px-3 rounded text-xs font-medium transition-all duration-200
+                      ${
+                        isSelectable
+                          ? "border border-green-500/50 text-green-400 hover:bg-green-500/10 hover:border-green-400 active:bg-green-500/20"
+                          : "border border-gray-600/50 text-gray-500"
+                      }
+                    `}
+                    aria-label={`Seleccionar a ${player.name}`}
+                  >
+                    {isSelectable ? "Seleccionar" : "No disponible"}
+                  </button>
                 </div>
               );
             })}
