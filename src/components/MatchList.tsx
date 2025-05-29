@@ -206,23 +206,6 @@ export default function MatchList() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-green-600/20 rounded-lg">
-            <CalendarIcon />
-          </div>
-          <h2 className="text-2xl font-bold text-white">Partidos</h2>
-        </div>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="btn-success"
-        >
-          <PlusIcon />
-          Nuevo Partido
-        </button>
-      </div>
-
       {/* Error State */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg animate-slide-in">

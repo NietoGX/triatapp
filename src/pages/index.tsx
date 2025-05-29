@@ -16,6 +16,7 @@ import { playerApi, lineupApi, teamApi, matchApi } from "@/lib/api";
 import { DraftState, Match } from "@/lib/database/types";
 import CreateMatchModal from "@/components/CreateMatchModal";
 import { createDefaultTeams, getAllTeamIds } from "@/lib/teams";
+import { draftApi } from "@/lib/api";
 
 // SVG Icons
 const HomeIcon = () => (
@@ -98,7 +99,7 @@ const PlusIcon = () => (
   </svg>
 );
 
-const PlayIcon = () => (
+const DraftIcon = () => (
   <svg
     className="w-5 h-5"
     fill="none"
@@ -109,29 +110,7 @@ const PlayIcon = () => (
       strokeLinecap="round"
       strokeLinejoin="round"
       strokeWidth={2}
-      d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H15M9 10v1m6-1v1m0 0l1 1m-1-1l-1 1m-5-1l1 1m-1-1l-1 1"
-    />
-  </svg>
-);
-
-const EyeIcon = () => (
-  <svg
-    className="w-5 h-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-    />
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
     />
   </svg>
 );
@@ -193,6 +172,9 @@ export default function Home() {
   const [isInitializing, setIsInitializing] = useState(false);
   const [showDraftSystem, setShowDraftSystem] = useState(false);
   const [isDraftActive, setIsDraftActive] = useState(false);
+  const [currentDraftState, setCurrentDraftState] = useState<DraftState | null>(
+    null
+  );
 
   // Match state
   const [latestMatch, setLatestMatch] = useState<Match | null>(null);
@@ -377,6 +359,35 @@ export default function Home() {
       loadData();
     }
   }, [isClient, dbInitialized]);
+
+  // Load draft state independently of DraftSystem visibility
+  const loadDraftState = async () => {
+    if (!latestMatch?.id) return;
+
+    try {
+      const state = await draftApi.getState(latestMatch.id);
+      setIsDraftActive(state.is_active);
+      setCurrentDraftState(state);
+    } catch (error) {
+      console.error("Error loading draft state:", error);
+    }
+  };
+
+  // Load draft state when latest match changes and set up polling
+  useEffect(() => {
+    if (latestMatch?.id) {
+      loadDraftState();
+
+      // Poll every 10 seconds to check for draft state changes
+      const pollInterval = setInterval(loadDraftState, 10000);
+
+      return () => clearInterval(pollInterval);
+    } else {
+      // Reset draft state if no match
+      setIsDraftActive(false);
+      setCurrentDraftState(null);
+    }
+  }, [latestMatch?.id]);
 
   // Function to handle player drops on teams
   const handlePlayerDrop = async (
@@ -694,6 +705,15 @@ export default function Home() {
   // Update draft system state
   const handleDraftStateChange = (newState: DraftState) => {
     setIsDraftActive(newState.is_active);
+    setCurrentDraftState(newState);
+  };
+
+  const getCurrentTeamName = () => {
+    if (!currentDraftState?.current_team) return "Ninguno";
+    return (
+      teams[currentDraftState.current_team]?.name ||
+      currentDraftState.current_team
+    );
   };
 
   const handlePositionClick = (position: PlayerPosition, teamId: string) => {
@@ -832,26 +852,23 @@ export default function Home() {
                 onClick={() => setShowDraftSystem(!showDraftSystem)}
                 className={`btn ${
                   isDraftActive
-                    ? "btn-success"
+                    ? showDraftSystem
+                      ? "btn-secondary" // Activo y abierto
+                      : "btn-success" // Activo y cerrado
                     : showDraftSystem
-                    ? "btn-secondary"
-                    : "btn-primary"
+                    ? "btn-secondary" // Inactivo y abierto
+                    : "btn-primary" // Inactivo y cerrado
                 }`}
               >
-                {isDraftActive ? (
-                  <>
-                    <PlayIcon />
-                    Triaje Activo
-                  </>
-                ) : showDraftSystem ? (
+                {showDraftSystem ? (
                   <>
                     <EyeOffIcon />
-                    Ocultar Triaje
+                    Cerrar Triaje
                   </>
                 ) : (
                   <>
-                    <EyeIcon />
-                    Mostrar Triaje
+                    <DraftIcon />
+                    Abrir Triaje
                   </>
                 )}
               </button>
@@ -865,6 +882,59 @@ export default function Home() {
               </button>
             </div>
           </div>
+
+          {/* Draft Active Banner */}
+          {isDraftActive && (
+            <div
+              className="bg-gradient-to-r from-green-600/20 to-green-500/20 border border-green-500/30 rounded-xl p-6 mb-8 animate-pulse cursor-pointer hover:from-green-600/30 hover:to-green-500/30 transition-all duration-300"
+              onClick={() => setShowDraftSystem(true)}
+              title="Click para abrir el sistema de triaje"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-green-600/30 rounded-xl">
+                    <DraftIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-green-300 mb-1">
+                      🟢 Triaje Activo
+                    </h3>
+                    <p className="text-green-200">
+                      {currentDraftState?.current_team ? (
+                        <>
+                          Turno de{" "}
+                          <span className="font-bold text-white">
+                            {getCurrentTeamName()}
+                          </span>{" "}
+                          - Esperando selección...
+                        </>
+                      ) : (
+                        "El sistema de triaje está en curso. Los jugadores se asignan automáticamente."
+                      )}
+                    </p>
+                    <p className="text-green-300 text-sm mt-1 font-medium">
+                      👆 Click aquí para abrir el triaje
+                    </p>
+                  </div>
+                </div>
+                <div className="hidden sm:flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="text-green-300 text-sm font-medium">
+                      {currentDraftState?.current_team
+                        ? "Esperando..."
+                        : "Activo"}
+                    </div>
+                    <div className="text-green-200 text-xs">
+                      {latestMatch
+                        ? `Partido: ${latestMatch.name}`
+                        : "Auto-actualización cada 10s"}
+                    </div>
+                  </div>
+                  <div className="w-4 h-4 bg-green-500 rounded-full animate-ping"></div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Loading State */}
           {isLoading ? (
