@@ -65,22 +65,6 @@ const ArrowLeftIcon = () => (
   </svg>
 );
 
-const PlayIcon = () => (
-  <svg
-    className="w-5 h-5"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H15M9 10v1m6-1v1m0 0l1 1m-1-1l-1 1m-5-1l1 1m-1-1l-1 1"
-    />
-  </svg>
-);
-
 const DraftIcon = () => (
   <svg
     className="w-5 h-5"
