@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { draftApi } from "@/lib/api";
 import { AppPlayer, Team } from "@/types";
 import { DraftHistoryItem, DraftState } from "@/lib/database/types";
@@ -35,6 +36,12 @@ export default function DraftSystem({
   const [fadeEffect, setFadeEffect] = useState(false);
   const [showTurnIndicator, setShowTurnIndicator] = useState(false);
   const [touchActive, setTouchActive] = useState(false);
+
+  // Estados para el modal de confirmación
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [selectedPlayerForConfirm, setSelectedPlayerForConfirm] =
+    useState<AppPlayer | null>(null);
+  const [teamForConfirm, setTeamForConfirm] = useState<string | null>(null);
 
   // Cargar el estado del triaje
   const loadDraftState = useCallback(async () => {
@@ -151,8 +158,8 @@ export default function DraftSystem({
     }
   };
 
-  // Seleccionar un jugador en el triaje
-  const handlePickPlayer = async (playerId: string) => {
+  // Manejar la selección inicial de un jugador (mostrar modal de confirmación)
+  const handlePlayerSelection = (playerId: string) => {
     // Prevenir selecciones múltiples rápidas
     const now = Date.now();
     if (now - lastPickTime < 300) {
@@ -160,19 +167,36 @@ export default function DraftSystem({
     }
     setLastPickTime(now);
 
-    if (!draftState.current_team || isPickingPlayer) return;
+    if (!draftState.current_team || isPickingPlayer || showConfirmModal) return;
 
-    // Store the current team before the state gets updated
-    const pickingTeam = draftState.current_team;
+    // Encontrar el jugador seleccionado
+    const selectedPlayer = availablePlayers.find((p) => p.id === playerId);
+    if (!selectedPlayer) return;
+
+    // Mostrar modal de confirmación
+    setSelectedPlayerForConfirm(selectedPlayer);
+    setTeamForConfirm(draftState.current_team);
+    setShowConfirmModal(true);
+  };
+
+  // Confirmar la selección del jugador
+  const handleConfirmSelection = async () => {
+    if (!selectedPlayerForConfirm || !teamForConfirm) return;
 
     try {
       setIsPickingPlayer(true);
       setError(null);
-      const result = await draftApi.pickPlayer(pickingTeam, playerId, matchId);
+      setShowConfirmModal(false);
+
+      const result = await draftApi.pickPlayer(
+        teamForConfirm,
+        selectedPlayerForConfirm.id,
+        matchId
+      );
 
       if (result.success) {
         // Notificar al componente padre para actualizar la UI ANTES de actualizar el estado
-        onPlayerPicked(playerId, pickingTeam);
+        onPlayerPicked(selectedPlayerForConfirm.id, teamForConfirm);
 
         // Luego actualizar el estado y el historial
         await loadDraftState();
@@ -181,16 +205,29 @@ export default function DraftSystem({
         setError(result.error?.message || "Error al seleccionar jugador");
       }
 
+      // Limpiar estados
+      setSelectedPlayerForConfirm(null);
+      setTeamForConfirm(null);
+
       // Añadir un pequeño retardo para prevenir dobles clicks
       setTimeout(() => {
         setIsPickingPlayer(false);
       }, 300);
     } catch {
       setError("Error al seleccionar jugador");
+      setSelectedPlayerForConfirm(null);
+      setTeamForConfirm(null);
       setTimeout(() => {
         setIsPickingPlayer(false);
       }, 300);
     }
+  };
+
+  // Cancelar la selección
+  const handleCancelSelection = () => {
+    setShowConfirmModal(false);
+    setSelectedPlayerForConfirm(null);
+    setTeamForConfirm(null);
   };
 
   // Mostrar el nombre del equipo actual
@@ -199,17 +236,160 @@ export default function DraftSystem({
     return teams[draftState.current_team]?.name || draftState.current_team;
   };
 
+  // Modal de confirmación de selección
+  const ConfirmationModal = () => {
+    if (!showConfirmModal || !selectedPlayerForConfirm || !teamForConfirm)
+      return null;
+
+    const teamName = teams[teamForConfirm]?.name || teamForConfirm;
+
+    const modalContent = (
+      <div className="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4">
+        <div className="bg-gray-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-600 transform transition-all duration-300 scale-100">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-orange-600 to-orange-700 p-4">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+              Confirmar Selección
+            </h3>
+          </div>
+
+          {/* Content */}
+          <div className="p-6">
+            <div className="text-center mb-6">
+              <div className="mb-4">
+                <span className="text-gray-300 text-lg">Equipo:</span>
+                <div className="text-2xl font-bold text-white mt-1 bg-gray-700/50 rounded-lg p-3">
+                  {teamName}
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <span className="text-gray-300 text-lg">
+                  Jugador seleccionado:
+                </span>
+                <div className="mt-2 bg-gray-700/50 rounded-lg p-4">
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="bg-yellow-500 text-black rounded-full w-12 h-12 flex items-center justify-center">
+                      <span className="text-xl font-bold">
+                        {selectedPlayerForConfirm.rating}
+                      </span>
+                    </div>
+                    <div className="text-left">
+                      <div className="text-xl font-bold text-white">
+                        {selectedPlayerForConfirm.name}
+                      </div>
+                      <div className="text-sm text-gray-300">
+                        {selectedPlayerForConfirm.position || "Sin posición"}
+                      </div>
+                      {selectedPlayerForConfirm.nickname && (
+                        <div className="text-sm text-gray-400 italic">
+                          &ldquo;{selectedPlayerForConfirm.nickname}&rdquo;
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-gray-600">
+                    <div className="flex justify-center gap-4 text-xs text-gray-400">
+                      <span>
+                        ⚽ {selectedPlayerForConfirm.stats?.goals || 0} goles
+                      </span>
+                      <span>
+                        🅰️ {selectedPlayerForConfirm.stats?.assists || 0} asist.
+                      </span>
+                      {selectedPlayerForConfirm.position === "GK" && (
+                        <>
+                          <span>
+                            🥅 {selectedPlayerForConfirm.stats?.saves || 0}{" "}
+                            paradas
+                          </span>
+                          <span>
+                            🛡️ {selectedPlayerForConfirm.stats?.goalsSaved || 0}{" "}
+                            g.salvados
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-gray-300 text-sm">
+                ¿Confirmas que{" "}
+                <span className="font-bold text-white">{teamName}</span> quiere
+                seleccionar a{" "}
+                <span className="font-bold text-white">
+                  {selectedPlayerForConfirm.name}
+                </span>
+                ?
+              </p>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelSelection}
+                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg font-medium transition-colors"
+                disabled={isPickingPlayer}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmSelection}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition-colors disabled:opacity-50"
+                disabled={isPickingPlayer}
+              >
+                {isPickingPlayer ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></div>
+                    Confirmando...
+                  </div>
+                ) : (
+                  "✅ Confirmar Selección"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
+    // Renderizar el modal usando un portal para que aparezca fuera del componente
+    return typeof document !== "undefined"
+      ? createPortal(modalContent, document.body)
+      : null;
+  };
+
   return (
     <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 mb-6 border border-white/10 shadow-lg relative">
       {showTurnIndicator && draftState.is_active && draftState.current_team && (
         <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
-          <div className="bg-blue-600/80 backdrop-blur-md p-6 rounded-xl shadow-lg border border-blue-400 animate-bounce-in">
+          <div className="bg-green-600/80 backdrop-blur-md p-6 rounded-xl shadow-lg border border-green-400 animate-bounce-in">
             <div className="text-center">
               <p className="text-white text-lg">Turno de</p>
               <p className="text-white text-4xl font-bold my-2 animate-pulse">
                 {getCurrentTeamName()}
               </p>
-              <p className="text-blue-200 text-sm">¡Selecciona un jugador!</p>
+              <p className="text-green-200 text-sm">¡Selecciona un jugador!</p>
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
+                <span className="text-green-200 text-xs">
+                  Actualizando automáticamente cada 5s
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -330,7 +510,7 @@ export default function DraftSystem({
                   onClick={() => {
                     // Solo procesar onClick si no hay interacción táctil activa
                     if (!touchActive && isSelectable) {
-                      handlePickPlayer(player.id);
+                      handlePlayerSelection(player.id);
                     }
                   }}
                   onTouchStart={(e) => {
@@ -338,7 +518,7 @@ export default function DraftSystem({
                       setTouchActive(true);
                       e.currentTarget.style.transform = "scale(0.98)";
                       e.currentTarget.style.backgroundColor =
-                        "rgba(59, 130, 246, 0.3)";
+                        "rgba(34, 197, 94, 0.3)";
                     }
                   }}
                   onTouchMove={(e) => {
@@ -353,7 +533,7 @@ export default function DraftSystem({
                       e.preventDefault();
                       e.currentTarget.style.transform = "scale(1)";
                       e.currentTarget.style.backgroundColor = "";
-                      handlePickPlayer(player.id);
+                      handlePlayerSelection(player.id);
 
                       // Resetear el flag después de un pequeño delay
                       setTimeout(() => {
@@ -416,6 +596,9 @@ export default function DraftSystem({
           </div>
         </div>
       )}
+
+      {/* Modal de confirmación ya no se renderiza aquí, se usa el portal */}
+      <ConfirmationModal />
 
       <style jsx>{`
         @keyframes bounceIn {
