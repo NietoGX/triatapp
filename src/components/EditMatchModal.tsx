@@ -16,6 +16,7 @@ export default function EditMatchModal({
 }: EditMatchModalProps) {
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -23,9 +24,12 @@ export default function EditMatchModal({
   useEffect(() => {
     if (match) {
       setName(match.name);
-      // Format date for input (YYYY-MM-DD)
+      // Parse date and time from the datetime string
       const matchDate = new Date(match.date);
       setDate(matchDate.toISOString().split("T")[0]);
+      // Extract time in HH:MM format
+      const timeString = matchDate.toTimeString().slice(0, 5);
+      setTime(timeString);
     }
   }, [match]);
 
@@ -37,6 +41,9 @@ export default function EditMatchModal({
     setError("");
 
     try {
+      // Combine date and time into a proper datetime string
+      const matchDateTime = `${date}T${time}:00`;
+
       const response = await fetch(`/api/matches/${match.id}/update`, {
         method: "PUT",
         headers: {
@@ -44,7 +51,7 @@ export default function EditMatchModal({
         },
         body: JSON.stringify({
           name: name.trim(),
-          date: date,
+          date: matchDateTime,
         }),
       });
 
@@ -60,6 +67,7 @@ export default function EditMatchModal({
       // Reset form
       setName("");
       setDate("");
+      setTime("");
     } catch (err) {
       console.error("Error updating match:", err);
       setError(err instanceof Error ? err.message : "Error updating match");
@@ -102,22 +110,42 @@ export default function EditMatchModal({
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="edit-match-date"
-              className="block text-sm font-medium text-gray-300 mb-2"
-            >
-              Fecha
-            </label>
-            <input
-              type="date"
-              id="edit-match-date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              required
-              disabled={isSubmitting}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="edit-match-date"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
+                Fecha
+              </label>
+              <input
+                type="date"
+                id="edit-match-date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+                disabled={isSubmitting}
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="edit-match-time"
+                className="block text-sm font-medium text-gray-300 mb-2"
+              >
+                Hora
+              </label>
+              <input
+                type="time"
+                id="edit-match-time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+                disabled={isSubmitting}
+              />
+            </div>
           </div>
 
           {error && (
@@ -137,7 +165,7 @@ export default function EditMatchModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !name.trim() || !date}
+              disabled={isSubmitting || !name.trim() || !date || !time}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
             >
               {isSubmitting ? "Guardando..." : "Guardar Cambios"}

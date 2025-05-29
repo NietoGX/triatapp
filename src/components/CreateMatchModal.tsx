@@ -16,6 +16,7 @@ export default function CreateMatchModal({
 }: CreateMatchModalProps) {
   const [name, setName] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [time, setTime] = useState("20:00"); // Default to 8:00 PM
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
@@ -45,7 +46,7 @@ export default function CreateMatchModal({
     e.preventDefault();
     setError("");
 
-    if (!name || !date) {
+    if (!name || !date || !time) {
       setError("Por favor completa todos los campos");
       return;
     }
@@ -57,15 +58,19 @@ export default function CreateMatchModal({
 
     try {
       setIsSubmitting(true);
+
+      // Combine date and time into a proper datetime string
+      const matchDateTime = `${date}T${time}:00`;
+
       console.log("Creating match with:", {
         name,
-        date,
+        date: matchDateTime,
         players: selectedPlayers,
       });
 
       await matchApi.create({
         name,
-        date,
+        date: matchDateTime,
         availablePlayers: selectedPlayers,
       });
 
@@ -76,6 +81,7 @@ export default function CreateMatchModal({
       // Reset form
       setName("");
       setDate(new Date().toISOString().split("T")[0]);
+      setTime("20:00");
       setSelectedPlayers([]);
     } catch (err) {
       setIsSubmitting(false);
@@ -148,19 +154,36 @@ export default function CreateMatchModal({
             />
           </div>
 
-          <div className="mb-6">
-            <label htmlFor="date" className="block text-white mb-2">
-              Fecha
-            </label>
-            <input
-              type="date"
-              id="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full p-2 rounded bg-gray-700 text-white"
-              disabled={isSubmitting}
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label htmlFor="date" className="block text-white mb-2">
+                Fecha
+              </label>
+              <input
+                type="date"
+                id="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full p-2 rounded bg-gray-700 text-white"
+                disabled={isSubmitting}
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="time" className="block text-white mb-2">
+                Hora
+              </label>
+              <input
+                type="time"
+                id="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-full p-2 rounded bg-gray-700 text-white"
+                disabled={isSubmitting}
+                required
+              />
+            </div>
           </div>
 
           <div className="mb-6">
