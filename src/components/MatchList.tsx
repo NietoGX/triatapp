@@ -209,7 +209,7 @@ export default function MatchList() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-600/20 rounded-lg">
+          <div className="p-2 bg-green-600/20 rounded-lg">
             <CalendarIcon />
           </div>
           <h2 className="text-2xl font-bold text-white">Partidos</h2>
@@ -248,7 +248,7 @@ export default function MatchList() {
       {/* Loading State */}
       {isLoading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin h-10 w-10 border-4 border-blue-500 rounded-full border-t-transparent mb-4"></div>
+          <div className="inline-block animate-spin h-10 w-10 border-4 border-green-500 rounded-full border-t-transparent mb-4"></div>
           <p className="text-gray-300">Cargando partidos...</p>
         </div>
       ) : matches.length === 0 ? (
@@ -282,7 +282,7 @@ export default function MatchList() {
                 <Link href={`/matches/${match.id}`} className="block p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-300 transition-colors">
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-300 transition-colors">
                         {match.name}
                       </h3>
                       <div className="space-y-2">
@@ -296,7 +296,7 @@ export default function MatchList() {
                         </div>
                       </div>
                     </div>
-                    <div className="text-blue-400 group-hover:translate-x-1 transition-transform">
+                    <div className="text-green-400 group-hover:translate-x-1 transition-transform">
                       <ArrowRightIcon />
                     </div>
                   </div>
@@ -310,10 +310,10 @@ export default function MatchList() {
                 </Link>
 
                 {/* Action Buttons */}
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 backdrop-blur-sm rounded-lg p-1 flex gap-1">
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity bg-stone-900/80 backdrop-blur-sm rounded-lg p-1 flex gap-1">
                   <button
                     onClick={(e) => handleEditMatch(match, e)}
-                    className="btn-ghost btn-icon btn-sm hover:bg-blue-600/20 hover:text-blue-400"
+                    className="btn-ghost btn-icon btn-sm hover:bg-green-600/20 hover:text-green-400"
                     title="Editar partido"
                     disabled={isDeleting === match.id}
                   >

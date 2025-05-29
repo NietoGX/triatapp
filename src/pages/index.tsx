@@ -750,7 +750,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Futbol Triaje</title>
+        <title>TriatApp</title>
         <meta
           name="description"
           content="Sistema de triaje para partidos de fútbol"
@@ -758,17 +758,17 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="min-h-screen bg-gradient-to-br from-gray-800 to-gray-900">
+      <main className="min-h-screen bg-gradient-to-br from-stone-800 to-stone-900">
         <div className="container mx-auto py-6 px-4">
           {/* Enhanced Header */}
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
             <div className="flex-1">
               <div className="flex items-center gap-4 mb-4">
-                <div className="p-3 bg-blue-600/20 rounded-xl">
+                <div className="p-3 bg-green-600/20 rounded-xl">
                   <HomeIcon />
                 </div>
                 <h1 className="text-4xl font-bold text-white text-shadow-lg">
-                  Futbol Triaje
+                  TriatApp ⚽️
                 </h1>
               </div>
 
@@ -776,7 +776,7 @@ export default function Home() {
                 <div className="card-glass p-4 mb-4 max-w-lg">
                   <div className="flex items-center gap-2 mb-2">
                     <CalendarIcon />
-                    <h2 className="text-lg font-semibold text-blue-300">
+                    <h2 className="text-lg font-semibold text-green-300">
                       Próximo partido
                     </h2>
                   </div>
@@ -791,7 +791,7 @@ export default function Home() {
                   </div>
                   <Link
                     href={`/matches/${latestMatch.id}`}
-                    className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
+                    className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 text-sm font-medium transition-colors"
                   >
                     Ver detalles
                     <svg
@@ -869,7 +869,7 @@ export default function Home() {
           {/* Loading State */}
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500 mb-4"></div>
               <p className="text-gray-300">Cargando aplicación...</p>
             </div>
           ) : players.length === 0 ? (

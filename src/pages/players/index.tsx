@@ -161,7 +161,7 @@ export default function PlayersPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500 mb-4"></div>
         <p className="text-gray-300">Cargando jugadores...</p>
       </div>
     );
@@ -201,7 +201,7 @@ export default function PlayersPage() {
         <title>Jugadores | Fútbol Triaje</title>
       </Head>
 
-      <main className="min-h-screen bg-gradient-to-br from-gray-800 to-gray-900">
+      <main className="min-h-screen bg-gradient-to-br from-stone-800 to-stone-900">
         <div className="container mx-auto px-4 py-8">
           {/* Enhanced Header */}
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
@@ -214,7 +214,7 @@ export default function PlayersPage() {
                 <ArrowLeftIcon />
               </Link>
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-600/20 rounded-xl">
+                <div className="p-3 bg-green-600/20 rounded-xl">
                   <UsersIcon />
                 </div>
                 <div>

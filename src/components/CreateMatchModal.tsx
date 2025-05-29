@@ -360,7 +360,7 @@ export default function CreateMatchModal({
 
               {isLoading ? (
                 <div className="text-center py-8 card">
-                  <div className="inline-block animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent mb-2"></div>
+                  <div className="inline-block animate-spin h-8 w-8 border-4 border-green-500 rounded-full border-t-transparent mb-2"></div>
                   <p className="text-gray-300 text-sm">Cargando jugadores...</p>
                 </div>
               ) : players.length === 0 ? (
@@ -393,7 +393,7 @@ export default function CreateMatchModal({
                         p-4 rounded-lg cursor-pointer transition-all duration-200 border-2
                         ${
                           selectedPlayers.includes(player.id)
-                            ? "bg-blue-600/20 border-blue-500 ring-2 ring-blue-500/30"
+                            ? "bg-green-600/20 border-green-500 ring-2 ring-green-500/30"
                             : "card border-transparent hover:border-gray-600"
                         }
                         ${
@@ -414,7 +414,7 @@ export default function CreateMatchModal({
                           <div
                             className={`w-4 h-4 rounded border-2 transition-colors ${
                               selectedPlayers.includes(player.id)
-                                ? "bg-blue-500 border-blue-500"
+                                ? "bg-green-500 border-green-500"
                                 : "border-gray-400"
                             }`}
                           >
@@ -434,7 +434,7 @@ export default function CreateMatchModal({
                           </div>
                         </div>
                       </div>
-                      <div className="text-xs text-blue-300">
+                      <div className="text-xs text-green-300">
                         {player.position || "Sin posición"}
                       </div>
                     </div>

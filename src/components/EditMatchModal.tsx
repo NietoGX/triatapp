@@ -172,7 +172,7 @@ export default function EditMatchModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-700/50">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600/20 rounded-lg">
+            <div className="p-2 bg-green-600/20 rounded-lg">
               <EditIcon />
             </div>
             <h2 className="text-2xl font-bold text-white">Editar Partido</h2>

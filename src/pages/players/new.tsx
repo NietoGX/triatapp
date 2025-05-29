@@ -82,8 +82,8 @@ export default function NewPlayerPage() {
   return (
     <>
       <Head>
-        <title>Add New Player - Futbol Triaje</title>
-        <meta name="description" content="Add a new player to Futbol Triaje" />
+        <title>Add New Player - TriatApp</title>
+        <meta name="description" content="Add a new player to TriatApp" />
       </Head>
       <main className="min-h-screen bg-field-grass bg-cover bg-center p-4">
         <div className="container mx-auto max-w-2xl bg-black/70 backdrop-blur-sm rounded-xl p-6 shadow-lg text-white">

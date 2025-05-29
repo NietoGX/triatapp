@@ -70,7 +70,7 @@ export default function PlayerEditModal({
           aria-hidden="true"
           onClick={onClose}
         >
-          <div className="absolute inset-0 bg-gray-900 opacity-75"></div>
+          <div className="absolute inset-0 bg-stone-900 opacity-75"></div>
         </div>
 
         <span

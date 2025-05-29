@@ -1,4 +1,4 @@
--- Esquema simplificado para Futbol Triaje
+-- Esquema simplificado para TriatApp
 -- Este esquema está diseñado para guardar únicamente la alineación actual
 
 -- Tabla para equipos

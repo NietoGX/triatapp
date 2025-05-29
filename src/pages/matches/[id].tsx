@@ -304,7 +304,7 @@ export default function MatchDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-stone-800 to-stone-900 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
           <p className="mt-2 text-gray-300">Cargando partido...</p>
@@ -315,7 +315,7 @@ export default function MatchDetailPage() {
 
   if (error || !match) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-800 to-gray-900 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-stone-800 to-stone-900 p-6">
         <div className="max-w-4xl mx-auto">
           <div className="bg-red-800/50 text-red-200 p-6 rounded-lg">
             <h2 className="text-xl font-bold mb-2">Error</h2>
@@ -335,15 +335,13 @@ export default function MatchDetailPage() {
   return (
     <>
       <Head>
-        <title>
-          {match ? match.name : "Cargando partido..."} | Futbol Triaje
-        </title>
+        <title>{match ? match.name : "Cargando partido..."} | TriatApp</title>
         <meta
           name="description"
           content="Detalles del partido y gestión de alineaciones"
         />
       </Head>
-      <main className="min-h-screen bg-gradient-to-br from-gray-800 to-gray-900">
+      <main className="min-h-screen bg-gradient-to-br from-stone-800 to-stone-900">
         <div className="container mx-auto py-6 px-4">
           {/* Header with match info and back button */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">

@@ -3,63 +3,69 @@
 @tailwind utilities;
 
 :root {
-  /* Enhanced Color Palette */
-  --primary-50: #eff6ff;
-  --primary-100: #dbeafe;
-  --primary-200: #bfdbfe;
-  --primary-300: #93c5fd;
-  --primary-400: #60a5fa;
-  --primary-500: #3b82f6;
-  --primary-600: #2563eb;
-  --primary-700: #1d4ed8;
-  --primary-800: #1e40af;
-  --primary-900: #1e3a8a;
+  /* Modern Sports Color Palette */
+  --primary-50: #f0fdf4;
+  --primary-100: #dcfce7;
+  --primary-200: #bbf7d0;
+  --primary-300: #86efac;
+  --primary-400: #4ade80;
+  --primary-500: #22c55e;
+  --primary-600: #16a34a;
+  --primary-700: #15803d;
+  --primary-800: #166534;
+  --primary-900: #14532d;
   
-  /* Success Colors */
+  /* Success Colors - Vibrant Green */
   --success-400: #4ade80;
   --success-500: #22c55e;
   --success-600: #16a34a;
   
-  /* Warning Colors */
-  --warning-400: #fbbf24;
-  --warning-500: #f59e0b;
-  --warning-600: #d97706;
+  /* Warning Colors - Golden Orange */
+  --warning-400: #fb923c;
+  --warning-500: #f97316;
+  --warning-600: #ea580c;
   
-  /* Error Colors */
+  /* Error Colors - Modern Red */
   --error-400: #f87171;
   --error-500: #ef4444;
   --error-600: #dc2626;
   
-  /* Neutral Colors - Dark Theme Optimized */
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-800: #1f2937;
-  --gray-900: #111827;
-  --gray-950: #030712;
+  /* Secondary - Orange Accent */
+  --secondary-400: #fb923c;
+  --secondary-500: #f97316;
+  --secondary-600: #ea580c;
   
-  /* Glass morphism backgrounds */
-  --glass-bg: rgba(15, 23, 42, 0.4);
-  --glass-border: rgba(148, 163, 184, 0.1);
-  --glass-hover: rgba(15, 23, 42, 0.6);
+  /* Warm Neutral Colors - Natural Browns/Grays */
+  --gray-50: #fafaf9;
+  --gray-100: #f5f5f4;
+  --gray-200: #e7e5e4;
+  --gray-300: #d6d3d1;
+  --gray-400: #a8a29e;
+  --gray-500: #78716c;
+  --gray-600: #57534e;
+  --gray-700: #44403c;
+  --gray-800: #292524;
+  --gray-900: #1c1917;
+  --gray-950: #0c0a09;
   
-  /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  --gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  --gradient-dark: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+  /* Modern Card Backgrounds */
+  --card-bg: rgba(41, 37, 36, 0.95);
+  --card-border: rgba(168, 162, 158, 0.15);
+  --card-hover: rgba(68, 64, 60, 0.95);
   
-  /* Shadows */
+  /* Modern Gradients */
+  --gradient-primary: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  --gradient-secondary: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  --gradient-dark: linear-gradient(135deg, #1c1917 0%, #292524 100%);
+  --gradient-field: linear-gradient(135deg, #15803d 0%, #14532d 100%);
+  
+  /* Modern Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.3);
+  --shadow-green: 0 0 20px rgba(34, 197, 94, 0.2);
+  --shadow-orange: 0 0 20px rgba(249, 115, 22, 0.2);
   
   /* Animation durations */
   --duration-fast: 150ms;
@@ -88,16 +94,15 @@ body {
 }
 
 body {
-  color: #f8fafc;
-  background: #0f172a;
+  color: #fafaf9;
+  background: #0c0a09;
   background-image: 
-    radial-gradient(at 40% 20%, hsla(228, 62%, 59%, 0.15) 0px, transparent 50%),
-    radial-gradient(at 80% 0%, hsla(189, 75%, 75%, 0.1) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, hsla(355, 100%, 93%, 0.05) 0px, transparent 50%),
-    radial-gradient(at 80% 50%, hsla(340, 100%, 76%, 0.05) 0px, transparent 50%),
-    radial-gradient(at 0% 100%, hsla(22, 62%, 84%, 0.05) 0px, transparent 50%),
-    radial-gradient(at 80% 100%, hsla(242, 100%, 70%, 0.1) 0px, transparent 50%),
-    radial-gradient(at 0% 0%, hsla(343, 100%, 76%, 0.05) 0px, transparent 50%);
+    radial-gradient(at 40% 20%, rgba(34, 197, 94, 0.05) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(249, 115, 22, 0.03) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(34, 197, 94, 0.02) 0px, transparent 50%),
+    radial-gradient(at 80% 50%, rgba(249, 115, 22, 0.04) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(34, 197, 94, 0.02) 0px, transparent 50%),
+    radial-gradient(at 80% 100%, rgba(28, 25, 23, 0.03) 0px, transparent 50%);
   min-height: 100vh;
 }
 
@@ -109,15 +114,15 @@ a {
 /* Enhanced Button System */
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-900 disabled:opacity-50 disabled:cursor-not-allowed;
   }
   
   .btn-primary {
-    @apply btn bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 shadow-md hover:shadow-lg;
+    @apply btn bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 shadow-md hover:shadow-lg;
   }
   
   .btn-secondary {
-    @apply btn bg-gray-700 text-white hover:bg-gray-600 focus:ring-gray-500 shadow-md hover:shadow-lg;
+    @apply btn bg-orange-600 text-white hover:bg-orange-700 focus:ring-orange-500 shadow-md hover:shadow-lg;
   }
   
   .btn-success {
@@ -148,25 +153,31 @@ a {
 /* Card System */
 @layer components {
   .card {
-    @apply bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-lg;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    @apply rounded-xl shadow-lg;
   }
   
   .card-glass {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    backdrop-filter: blur(16px);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(8px);
     @apply rounded-xl shadow-xl;
   }
   
   .card-hover {
-    @apply transition-all duration-300 hover:shadow-xl hover:bg-gray-800/70 hover:-translate-y-1;
+    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5;
+  }
+  
+  .card-hover:hover {
+    background: var(--card-hover);
   }
 }
 
 /* Form Controls */
 @layer components {
   .form-input {
-    @apply w-full px-3 py-2 bg-gray-800/50 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200;
+    @apply w-full px-3 py-2 bg-gray-800/80 border border-gray-600/50 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors duration-200;
   }
   
   .form-label {
@@ -176,18 +187,6 @@ a {
   .form-error {
     @apply text-red-400 text-sm mt-1;
   }
-}
-
-/* Glass Morphism Effects */
-.glass {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-
-.glass-hover:hover {
-  background: var(--glass-hover);
 }
 
 /* Enhanced Text Shadows */
@@ -225,17 +224,17 @@ a {
   transform: scale(1.02);
 }
 
-/* Glow Effects */
-.glow-blue {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+/* Modern Glow Effects */
+.glow-green {
+  box-shadow: var(--shadow-green);
 }
 
-.glow-green {
-  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+.glow-orange {
+  box-shadow: var(--shadow-orange);
 }
 
 .glow-red {
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
 }
 
 /* Loading Animations */
@@ -286,13 +285,13 @@ a {
 }
 
 .position-drop-zone.can-drop {
-  @apply border-blue-400 bg-blue-400/10 shadow-lg;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5), var(--shadow-lg);
+  @apply border-green-400 bg-green-400/10 shadow-lg;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.5), var(--shadow-lg);
 }
 
 .position-drop-zone.is-over {
-  @apply border-blue-500 bg-blue-500/20;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.7), var(--shadow-xl);
+  @apply border-green-500 bg-green-500/20;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.7), var(--shadow-xl);
 }
 
 /* Player Card Enhancements */
@@ -301,7 +300,7 @@ a {
 }
 
 .player-card:hover {
-  box-shadow: var(--shadow-xl), var(--shadow-glow);
+  box-shadow: var(--shadow-xl), var(--shadow-green);
 }
 
 .player-card.dragging {
@@ -311,29 +310,29 @@ a {
 
 /* Team Specific Styles */
 .team-borjas {
-  border-color: #e74c3c;
-  box-shadow: 0 0 20px rgba(231, 76, 60, 0.2);
+  border-color: #22c55e;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.15);
 }
 
 .team-nietos {
-  border-color: #9b59b6;
-  box-shadow: 0 0 20px rgba(155, 89, 182, 0.2);
+  border-color: #f97316;
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.15);
 }
 
-/* Field Enhancement */
+/* Modern Field Enhancement */
 .field-container {
   background: linear-gradient(135deg, 
-    rgba(34, 139, 34, 0.1) 0%, 
-    rgba(0, 100, 0, 0.15) 50%, 
-    rgba(34, 139, 34, 0.1) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+    rgba(21, 128, 61, 0.08) 0%, 
+    rgba(20, 83, 45, 0.12) 50%, 
+    rgba(21, 128, 61, 0.08) 100%);
+  border: 1px solid rgba(34, 197, 94, 0.15);
 }
 
 .field-lines::before,
 .field-lines::after {
   content: '';
   position: absolute;
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.15);
 }
 
 .field-lines::before {
@@ -352,14 +351,17 @@ a {
   transform: translateX(-50%);
 }
 
-/* Modal Enhancements */
+/* Modern Modal Enhancements */
 .modal-overlay {
-  @apply fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center;
+  @apply fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center;
   animation: fadeIn var(--duration-normal) ease-out;
 }
 
 .modal-content {
-  @apply card-glass max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(12px);
+  @apply rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto;
   animation: slideIn var(--duration-normal) ease-out;
 }
 
@@ -386,4 +388,23 @@ a {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Sports Theme Enhancements */
+.sports-header {
+  background: linear-gradient(135deg, rgba(21, 128, 61, 0.1) 0%, rgba(20, 83, 45, 0.05) 100%);
+  border-bottom: 1px solid rgba(34, 197, 94, 0.1);
+}
+
+.stats-card {
+  @apply transition-all duration-200 hover:scale-105;
+}
+
+.position-badge {
+  @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.rating-badge {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.2) 0%, rgba(234, 88, 12, 0.2) 100%);
+  @apply text-orange-300 border border-orange-500/30;
 }

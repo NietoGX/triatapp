@@ -117,7 +117,7 @@ export const AvailablePlayers = ({
 
     return (
       <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-        <div className="bg-gray-900/90 backdrop-blur-md rounded-xl max-w-md w-full shadow-lg overflow-hidden">
+        <div className="bg-stone-900/90 backdrop-blur-md rounded-xl max-w-md w-full shadow-lg overflow-hidden">
           <div className="p-5">
             <div className="flex justify-between items-start mb-4">
               <div>

@@ -1,4 +1,4 @@
--- Esquema completo para Futbol Triaje
+-- Esquema completo para TriatApp
 
 -- Tabla para equipos
 CREATE TABLE IF NOT EXISTS teams (

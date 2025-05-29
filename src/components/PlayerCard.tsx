@@ -67,10 +67,10 @@ export default function PlayerCard({
         return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
       case "CL":
       case "CR":
-        return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+        return "bg-green-500/20 text-green-400 border-green-500/30";
       case "ML":
       case "MR":
-        return "bg-green-500/20 text-green-400 border-green-500/30";
+        return "bg-orange-500/20 text-orange-400 border-orange-500/30";
       case "ST":
         return "bg-red-500/20 text-red-400 border-red-500/30";
       default:
@@ -103,7 +103,7 @@ export default function PlayerCard({
       className={`
         card card-hover group relative
         ${isSelectable ? "cursor-pointer" : "cursor-not-allowed opacity-70"}
-        ${isSelected ? "ring-2 ring-blue-500 bg-blue-500/10" : ""}
+        ${isSelected ? "ring-2 ring-green-500 bg-green-500/10" : ""}
         ${className}
       `}
     >
@@ -185,22 +185,22 @@ export default function PlayerCard({
                 onIncrementStat && handleIncrementStat("assists", e)
               }
               className={`
-                group/stat p-2 rounded-lg transition-colors border border-blue-500/20
-                bg-blue-500/10 hover:bg-blue-500/20
+                group/stat p-2 rounded-lg transition-colors border border-orange-500/20
+                bg-orange-500/10 hover:bg-orange-500/20
                 ${onIncrementStat ? "cursor-pointer" : ""}
               `}
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs text-blue-300 font-medium">
+                  <div className="text-xs text-orange-300 font-medium">
                     Asist.
                   </div>
-                  <div className="text-lg font-bold text-blue-400">
+                  <div className="text-lg font-bold text-orange-400">
                     {player.stats?.assists || 0}
                   </div>
                 </div>
                 {onIncrementStat && (
-                  <div className="opacity-0 group-hover/stat:opacity-100 transition-opacity bg-blue-500/30 rounded-full p-1">
+                  <div className="opacity-0 group-hover/stat:opacity-100 transition-opacity bg-orange-500/30 rounded-full p-1">
                     <PlusIcon />
                   </div>
                 )}
@@ -268,7 +268,7 @@ export default function PlayerCard({
 
       {/* Selection Indicator */}
       {isSelected && (
-        <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+        <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
           <svg
             className="w-4 h-4 text-white"
             fill="currentColor"

@@ -318,7 +318,7 @@ export const TeamContainer = ({
 
     return (
       <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-        <div className="bg-gray-900/90 backdrop-blur-md rounded-xl max-w-md w-full shadow-lg overflow-hidden">
+        <div className="bg-stone-900/90 backdrop-blur-md rounded-xl max-w-md w-full shadow-lg overflow-hidden">
           <div className="p-5">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -534,7 +534,7 @@ export const PlayerSelectionModal = ({
 
   return (
     <div className="fixed inset-0 bg-black/80 z-[100] flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gray-900/90">
+      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-stone-900/90">
         <h4 className="text-white text-lg font-bold">
           {getPositionName(selectedPosition)} - Elige un jugador
         </h4>
@@ -559,7 +559,7 @@ export const PlayerSelectionModal = ({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-gray-900/80">
+      <div className="flex-1 overflow-y-auto bg-stone-900/80">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4">
           {availablePlayers.map((player) => (
             <div
@@ -589,7 +589,7 @@ export const PlayerSelectionModal = ({
         </div>
       </div>
 
-      <div className="p-4 border-t border-white/10 bg-gray-900/90">
+      <div className="p-4 border-t border-white/10 bg-stone-900/90">
         <button
           onClick={onClose}
           className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg text-base font-medium transition-colors"
