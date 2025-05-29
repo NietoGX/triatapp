@@ -5,6 +5,119 @@ import { Match } from "@/lib/database/types";
 import CreateMatchModal from "./CreateMatchModal";
 import EditMatchModal from "./EditMatchModal";
 
+// SVG Icons
+const CalendarIcon = () => (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+    />
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
+  </svg>
+);
+
+const EditIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+    />
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+    />
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 4v16m8-8H4"
+    />
+  </svg>
+);
+
+const ArrowRightIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M9 5l7 7-7 7"
+    />
+  </svg>
+);
+
+const EmptyIcon = () => (
+  <svg
+    className="w-16 h-16 mx-auto text-gray-400 mb-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+    />
+  </svg>
+);
+
 export default function MatchList() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,8 +155,9 @@ export default function MatchList() {
     e.preventDefault(); // Prevent navigation to match page
     e.stopPropagation();
 
-    const confirmDelete = confirm(
-      `¿Estás seguro de que quieres eliminar el partido "${match.name}"?\n\n` +
+    // Create a custom confirmation dialog
+    const confirmDelete = window.confirm(
+      `¿Estás seguro de que quieres eliminar "${match.name}"?\n\n` +
         "Esta acción eliminará:\n" +
         "• El partido\n" +
         "• Todas las alineaciones\n" +
@@ -61,6 +175,7 @@ export default function MatchList() {
       // Remove match from local state
       setMatches((prev) => prev.filter((m) => m.id !== match.id));
 
+      // Success feedback (you could replace this with a toast notification)
       alert("Partido eliminado correctamente");
     } catch (err) {
       console.error("Error deleting match:", err);
@@ -71,84 +186,159 @@ export default function MatchList() {
   };
 
   const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
     const options: Intl.DateTimeFormatOptions = {
-      year: "numeric",
-      month: "long",
+      weekday: "long",
       day: "numeric",
+      month: "long",
+      year: "numeric",
     };
-    return new Date(dateString).toLocaleDateString("es-ES", options);
+    const timeOptions: Intl.DateTimeFormatOptions = {
+      hour: "2-digit",
+      minute: "2-digit",
+    };
+
+    const formattedDate = date.toLocaleDateString("es-ES", options);
+    const formattedTime = date.toLocaleTimeString("es-ES", timeOptions);
+
+    return { date: formattedDate, time: formattedTime };
   };
 
   return (
-    <div className="mt-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Partidos</h2>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-600/20 rounded-lg">
+            <CalendarIcon />
+          </div>
+          <h2 className="text-2xl font-bold text-white">Partidos</h2>
+        </div>
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          className="btn-success"
         >
+          <PlusIcon />
           Nuevo Partido
         </button>
       </div>
 
+      {/* Error State */}
       {error && (
-        <div className="bg-red-800/50 text-red-200 p-4 rounded-lg mb-6">
-          {error}
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg animate-slide-in">
+          <div className="flex items-center gap-2">
+            <svg
+              className="w-5 h-5 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            {error}
+          </div>
         </div>
       )}
 
+      {/* Loading State */}
       {isLoading ? (
-        <div className="text-center py-8">
-          <div className="inline-block animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
-          <p className="mt-2 text-gray-300">Cargando partidos...</p>
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin h-10 w-10 border-4 border-blue-500 rounded-full border-t-transparent mb-4"></div>
+          <p className="text-gray-300">Cargando partidos...</p>
         </div>
       ) : matches.length === 0 ? (
-        <div className="bg-gray-800/50 p-8 rounded-lg text-center">
-          <p className="text-gray-300 mb-4">No hay partidos creados</p>
+        /* Empty State */
+        <div className="text-center py-16">
+          <EmptyIcon />
+          <h3 className="text-xl font-semibold text-white mb-2">
+            No hay partidos creados
+          </h3>
+          <p className="text-gray-400 mb-6">
+            Crea tu primer partido para empezar a organizar alineaciones
+          </p>
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            className="btn-success"
           >
+            <PlusIcon />
             Crear el primer partido
           </button>
         </div>
       ) : (
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {matches.map((match) => (
-            <div
-              key={match.id}
-              className="bg-gray-800 hover:bg-gray-700 p-6 rounded-lg transition-colors relative group"
-            >
-              <Link href={`/matches/${match.id}`} className="block">
-                <h3 className="text-xl font-bold text-white mb-2">
-                  {match.name}
-                </h3>
-                <p className="text-gray-300">{formatDate(match.date)}</p>
-              </Link>
+        /* Matches Grid */
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {matches.map((match) => {
+            const { date, time } = formatDate(match.date);
+            return (
+              <div
+                key={match.id}
+                className="card card-hover group relative overflow-hidden"
+              >
+                <Link href={`/matches/${match.id}`} className="block p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-300 transition-colors">
+                        {match.name}
+                      </h3>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <CalendarIcon />
+                          <span className="text-sm capitalize">{date}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <ClockIcon />
+                          <span className="text-sm">{time}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-blue-400 group-hover:translate-x-1 transition-transform">
+                      <ArrowRightIcon />
+                    </div>
+                  </div>
 
-              {/* Action buttons */}
-              <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                <button
-                  onClick={(e) => handleEditMatch(match, e)}
-                  className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors"
-                  title="Editar partido"
-                >
-                  ✏️
-                </button>
-                <button
-                  onClick={(e) => handleDeleteMatch(match, e)}
-                  className="p-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors"
-                  disabled={isDeleting === match.id}
-                  title="Eliminar partido"
-                >
-                  {isDeleting === match.id ? "..." : "🗑️"}
-                </button>
+                  {/* Match Status or additional info could go here */}
+                  <div className="mt-4 pt-4 border-t border-gray-700/50">
+                    <span className="text-xs text-gray-400 bg-gray-700/30 px-2 py-1 rounded">
+                      Partido activo
+                    </span>
+                  </div>
+                </Link>
+
+                {/* Action Buttons */}
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900/80 backdrop-blur-sm rounded-lg p-1 flex gap-1">
+                  <button
+                    onClick={(e) => handleEditMatch(match, e)}
+                    className="btn-ghost btn-icon btn-sm hover:bg-blue-600/20 hover:text-blue-400"
+                    title="Editar partido"
+                    disabled={isDeleting === match.id}
+                  >
+                    <EditIcon />
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteMatch(match, e)}
+                    className="btn-ghost btn-icon btn-sm hover:bg-red-600/20 hover:text-red-400"
+                    disabled={isDeleting === match.id}
+                    title="Eliminar partido"
+                  >
+                    {isDeleting === match.id ? (
+                      <div className="animate-spin h-4 w-4 border-2 border-current rounded-full border-t-transparent"></div>
+                    ) : (
+                      <TrashIcon />
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
+      {/* Modals */}
       <CreateMatchModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}

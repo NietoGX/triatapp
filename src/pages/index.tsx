@@ -17,6 +17,173 @@ import { DraftState, Match } from "@/lib/database/types";
 import CreateMatchModal from "@/components/CreateMatchModal";
 import { createDefaultTeams, getAllTeamIds } from "@/lib/teams";
 
+// SVG Icons
+const HomeIcon = () => (
+  <svg
+    className="w-8 h-8"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+    />
+  </svg>
+);
+
+const UsersIcon = () => (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
+    />
+  </svg>
+);
+
+const CalendarIcon = () => (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+    />
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M12 4v16m8-8H4"
+    />
+  </svg>
+);
+
+const PlayIcon = () => (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H15M9 10v1m6-1v1m0 0l1 1m-1-1l-1 1m-5-1l1 1m-1-1l-1 1"
+    />
+  </svg>
+);
+
+const EyeIcon = () => (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+    />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+    />
+  </svg>
+);
+
+const EyeOffIcon = () => (
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L12 12m-3-3l6.364 6.364M21 21l-6.364-6.364m0 0L12 12m-3-3l6.364 6.364"
+    />
+  </svg>
+);
+
+const RefreshIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+    />
+  </svg>
+);
+
+const DatabaseIcon = () => (
+  <svg
+    className="w-8 h-8"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"
+    />
+  </svg>
+);
+
 export default function Home() {
   // Use mobile detection for touch vs mouse interactions
   const [isMobileView, setIsMobileView] = useState(false);
@@ -593,137 +760,214 @@ export default function Home() {
 
       <main className="min-h-screen bg-gradient-to-br from-gray-800 to-gray-900">
         <div className="container mx-auto py-6 px-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2">
-                Futbol Triaje
-              </h1>
+          {/* Enhanced Header */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
+            <div className="flex-1">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="p-3 bg-blue-600/20 rounded-xl">
+                  <HomeIcon />
+                </div>
+                <h1 className="text-4xl font-bold text-white text-shadow-lg">
+                  Futbol Triaje
+                </h1>
+              </div>
+
               {latestMatch ? (
-                <div className="bg-blue-900/30 p-3 rounded-lg mb-4">
-                  <h2 className="text-xl font-semibold text-blue-300">
-                    Próximo partido: {latestMatch.name}
-                  </h2>
-                  <p className="text-gray-300">
-                    {formatDate(latestMatch.date)}
-                  </p>
+                <div className="card-glass p-4 mb-4 max-w-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CalendarIcon />
+                    <h2 className="text-lg font-semibold text-blue-300">
+                      Próximo partido
+                    </h2>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    {latestMatch.name}
+                  </h3>
+                  <div className="flex items-center gap-2 text-gray-300 mb-3">
+                    <ClockIcon />
+                    <span className="text-sm">
+                      {formatDate(latestMatch.date)}
+                    </span>
+                  </div>
                   <Link
                     href={`/matches/${latestMatch.id}`}
-                    className="text-sm text-blue-400 hover:text-blue-300 mt-1 inline-block"
+                    className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
                   >
-                    Ver detalles &rarr;
+                    Ver detalles
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
                   </Link>
                 </div>
               ) : (
-                <p className="text-gray-300 mb-4">
-                  No hay partidos programados
-                </p>
+                <div className="text-gray-300 mb-4 flex items-center gap-2">
+                  <CalendarIcon />
+                  <span>No hay partidos programados</span>
+                </div>
               )}
             </div>
 
-            <div className="flex flex-wrap gap-2 mt-4 md:mt-0">
-              <Link
-                href="/players"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-              >
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-3">
+              <Link href="/players" className="btn-primary">
+                <UsersIcon />
                 Jugadores
               </Link>
-              <Link
-                href="/matches"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
-              >
+              <Link href="/matches" className="btn-primary">
+                <CalendarIcon />
                 Partidos
               </Link>
-              {/* <Link
-                href="/db-setup"
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded transition-colors"
-              >
-                Config BD
-              </Link> */}
+
               <button
                 onClick={() => setShowDraftSystem(!showDraftSystem)}
-                className={`px-4 py-2 ${
+                className={`btn ${
                   isDraftActive
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-blue-600 hover:bg-blue-700"
-                } text-white rounded transition-colors`}
+                    ? "btn-success"
+                    : showDraftSystem
+                    ? "btn-secondary"
+                    : "btn-primary"
+                }`}
               >
-                {isDraftActive
-                  ? "Triaje Activo"
-                  : showDraftSystem
-                  ? "Ocultar Triaje"
-                  : "Mostrar Triaje"}
+                {isDraftActive ? (
+                  <>
+                    <PlayIcon />
+                    Triaje Activo
+                  </>
+                ) : showDraftSystem ? (
+                  <>
+                    <EyeOffIcon />
+                    Ocultar Triaje
+                  </>
+                ) : (
+                  <>
+                    <EyeIcon />
+                    Mostrar Triaje
+                  </>
+                )}
               </button>
+
               <button
                 onClick={() => setIsCreateMatchModalOpen(true)}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+                className="btn-success"
               >
+                <PlusIcon />
                 Nuevo Partido
               </button>
             </div>
           </div>
 
+          {/* Loading State */}
           {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+            <div className="flex flex-col items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+              <p className="text-gray-300">Cargando aplicación...</p>
             </div>
           ) : players.length === 0 ? (
-            <div className="bg-gray-800 p-6 rounded-lg mb-8 text-center">
+            /* No Players State */
+            <div className="text-center py-16">
+              <div className="mb-6">
+                <DatabaseIcon />
+              </div>
               <h2 className="text-2xl font-bold text-white mb-4">
                 No hay jugadores registrados
               </h2>
-              <p className="text-gray-300 mb-6">
+              <p className="text-gray-300 mb-6 max-w-md mx-auto">
                 Necesitas crear algunos jugadores para empezar a usar la
                 aplicación.
               </p>
               <button
                 onClick={handleInitializeDb}
                 disabled={isInitializing}
-                className={`px-6 py-3 rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors ${
-                  isInitializing ? "opacity-50 cursor-not-allowed" : ""
-                }`}
+                className="btn-primary btn-lg"
               >
-                {isInitializing
-                  ? "Inicializando..."
-                  : "Inicializar Base de Datos"}
+                {isInitializing ? (
+                  <>
+                    <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
+                    Inicializando...
+                  </>
+                ) : (
+                  <>
+                    <DatabaseIcon />
+                    Inicializar Base de Datos
+                  </>
+                )}
               </button>
             </div>
           ) : !latestMatch ? (
-            <div className="bg-gray-800 p-6 rounded-lg mb-8 text-center">
+            /* No Matches State */
+            <div className="text-center py-16">
+              <div className="mb-6">
+                <CalendarIcon />
+              </div>
               <h2 className="text-2xl font-bold text-white mb-4">
                 No hay partidos creados
               </h2>
-              <p className="text-gray-300 mb-6">
+              <p className="text-gray-300 mb-6 max-w-md mx-auto">
                 Crea tu primer partido para empezar a organizar las
                 alineaciones.
               </p>
               <button
                 onClick={() => setIsCreateMatchModalOpen(true)}
-                className="px-6 py-3 rounded bg-green-600 hover:bg-green-700 text-white transition-colors"
+                className="btn-success btn-lg"
               >
+                <PlusIcon />
                 Crear Primer Partido
               </button>
             </div>
           ) : (
+            /* Main Content */
             <>
               {showDraftSystem && (
-                <DraftSystem
-                  availablePlayers={players}
-                  teams={teams}
-                  matchId={latestMatch ? latestMatch.id : ""}
-                  onDraftStateChange={handleDraftStateChange}
-                  onPlayerPicked={handleDraftPlayerPicked}
-                  onTeamsReset={handleReset}
-                />
+                <div className="mb-8">
+                  <DraftSystem
+                    availablePlayers={players}
+                    teams={teams}
+                    matchId={latestMatch ? latestMatch.id : ""}
+                    onDraftStateChange={handleDraftStateChange}
+                    onPlayerPicked={handleDraftPlayerPicked}
+                    onTeamsReset={handleReset}
+                  />
+                </div>
               )}
 
               {!showDraftSystem && latestMatch && (
-                <div className="mb-4">
-                  <div className="bg-gray-800/60 p-4 rounded-lg shadow-lg mb-4">
-                    <h2 className="text-xl font-bold text-white border-b border-gray-700 pb-2 mb-3">
-                      Alineaciones para: {latestMatch.name}
-                    </h2>
+                <div className="space-y-6">
+                  {/* Match Header */}
+                  <div className="card-glass p-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <h2 className="text-2xl font-bold text-white mb-2">
+                          Alineaciones para: {latestMatch.name}
+                        </h2>
+                        <div className="flex items-center gap-2 text-gray-300">
+                          <ClockIcon />
+                          <span className="text-sm">
+                            {formatDate(latestMatch.date)}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleReset}
+                        className="btn-danger btn-sm"
+                        disabled={isDraftActive}
+                      >
+                        <RefreshIcon />
+                        Reiniciar Alineaciones
+                      </button>
+                    </div>
                   </div>
 
+                  {/* Teams and Players */}
                   <DndProvider
                     backend={
                       isClient
@@ -733,9 +977,8 @@ export default function Home() {
                         : HTML5Backend
                     }
                   >
-                    {/* Drag and Drop team builder interface */}
                     <div className="lg:flex gap-6">
-                      {/* Team lineups (Left) */}
+                      {/* Team lineups */}
                       <div className="w-full lg:w-3/4 grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 lg:mb-0">
                         {getAllTeamIds().map((teamId) => (
                           <TeamContainer
@@ -751,26 +994,17 @@ export default function Home() {
                         ))}
                       </div>
 
-                      {/* Available Players (Right) */}
+                      {/* Available Players */}
                       <div className="w-full lg:w-1/4">
                         <AvailablePlayers
                           players={players}
                           isMobileView={isMobileView}
                           isDragDisabled={isDraftActive}
                         />
-
-                        <div className="mt-4 flex space-x-2 justify-end">
-                          <button
-                            onClick={handleReset}
-                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors"
-                          >
-                            Reiniciar Alineaciones
-                          </button>
-                        </div>
                       </div>
                     </div>
 
-                    {/* Player selection modal for mobile */}
+                    {/* Mobile Player Selection Modal */}
                     {selectedPosition && (
                       <PlayerSelectionModal
                         selectedPosition={selectedPosition.position}
