@@ -9,7 +9,7 @@ export const TEAM_CONFIG = {
   },
   TEAM_B: {
     id: "nietos",
-    name: "Team Sergi",
+    name: "Team Seglar",
     color: "bg-purple-600", // Used for styling
   },
 } as const;
