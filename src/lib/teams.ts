@@ -4,12 +4,12 @@ import { Team } from "@/types";
 export const TEAM_CONFIG = {
   TEAM_A: {
     id: "borjas",
-    name: "Equipo A",
+    name: "Team Lluis",
     color: "bg-red-600", // Used for styling
   },
   TEAM_B: {
     id: "nietos",
-    name: "Equipo B",
+    name: "Team Sergi",
     color: "bg-purple-600", // Used for styling
   },
 } as const;
