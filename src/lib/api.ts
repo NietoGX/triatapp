@@ -288,6 +288,32 @@ export const matchApi = {
     });
   },
 
+  // Update match
+  update: async (
+    id: string,
+    data: { name: string; date: string }
+  ): Promise<{ success: boolean; match: Match }> => {
+    return fetchAPI<{ success: boolean; match: Match }>(
+      `/matches/${id}/update`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }
+    );
+  },
+
+  // Delete match
+  delete: async (
+    id: string
+  ): Promise<{ success: boolean; message: string; deletedMatch: Match }> => {
+    return fetchAPI<{ success: boolean; message: string; deletedMatch: Match }>(
+      `/matches/${id}/delete`,
+      {
+        method: "DELETE",
+      }
+    );
+  },
+
   // Reset all match data (lineups + draft)
   resetAll: async (
     matchId: string
