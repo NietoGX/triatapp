@@ -36,6 +36,7 @@ export default function DraftSystem({
   const [fadeEffect, setFadeEffect] = useState(false);
   const [showTurnIndicator, setShowTurnIndicator] = useState(false);
   const [touchActive, setTouchActive] = useState(false);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
 
   // Estados para el modal de confirmación
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -103,6 +104,37 @@ export default function DraftSystem({
       };
     }
   }, [draftState.current_team, draftState.is_active]);
+
+  // Auto-refresh cada 10 segundos cuando el draft está activo
+  useEffect(() => {
+    if (!draftState.is_active) {
+      return;
+    }
+
+    console.log(
+      "[DRAFT SYSTEM] Auto-refresh iniciado - actualizando cada 10 segundos"
+    );
+
+    const refreshInterval = setInterval(async () => {
+      console.log("[DRAFT SYSTEM] Ejecutando auto-refresh...");
+      setIsAutoRefreshing(true);
+
+      try {
+        await Promise.all([loadDraftState(), loadDraftHistory()]);
+        console.log("[DRAFT SYSTEM] Auto-refresh completado exitosamente");
+      } catch (error) {
+        console.error("[DRAFT SYSTEM] Error durante auto-refresh:", error);
+      } finally {
+        setIsAutoRefreshing(false);
+      }
+    }, 10000); // 10 segundos
+
+    return () => {
+      console.log("[DRAFT SYSTEM] Auto-refresh detenido");
+      clearInterval(refreshInterval);
+      setIsAutoRefreshing(false);
+    };
+  }, [draftState.is_active, loadDraftState, loadDraftHistory]);
 
   // Iniciar un nuevo triaje
   const handleStartDraft = async () => {
@@ -387,7 +419,10 @@ export default function DraftSystem({
               <div className="flex items-center justify-center gap-2 mt-2">
                 <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></div>
                 <span className="text-green-200 text-xs">
-                  Actualizando automáticamente cada 5s
+                  Actualizando automáticamente cada 10s
+                  {isAutoRefreshing && (
+                    <span className="ml-1 text-yellow-300">⟳</span>
+                  )}
                 </span>
               </div>
             </div>
@@ -407,14 +442,31 @@ export default function DraftSystem({
 
       {/* Estado del triaje */}
       <div className="mb-4 p-3 bg-gray-800/50 rounded-lg">
-        <p className="text-white mb-2">
-          <span className="font-bold">Estado:</span>{" "}
-          <span
-            className={draftState.is_active ? "text-green-400" : "text-red-400"}
-          >
-            {draftState.is_active ? "Activo" : "Inactivo"}
-          </span>
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <span className="font-bold text-white">Estado:</span>{" "}
+            <span
+              className={
+                draftState.is_active ? "text-green-400" : "text-red-400"
+              }
+            >
+              {draftState.is_active ? "Activo" : "Inactivo"}
+            </span>
+          </div>
+          {draftState.is_active && (
+            <div className="flex items-center gap-2 text-xs">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+              <span className="text-blue-300">
+                Auto-refresh: 10s
+                {isAutoRefreshing && (
+                  <span className="ml-1 text-yellow-400 animate-spin inline-block">
+                    ⟳
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
+        </div>
         {draftState.is_active && (
           <div className="mt-2">
             <p className="text-white text-sm font-medium mb-1">Turno actual:</p>
