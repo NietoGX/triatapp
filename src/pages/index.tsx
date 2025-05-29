@@ -15,36 +15,7 @@ import { AppPlayer, PlayerPosition, Team } from "@/types";
 import { playerApi, lineupApi, teamApi, matchApi } from "@/lib/api";
 import { DraftState, Match } from "@/lib/database/types";
 import CreateMatchModal from "@/components/CreateMatchModal";
-
-// Default empty teams structure
-const DEFAULT_TEAMS: { [key: string]: Team } = {
-  borjas: {
-    id: "Equipo A",
-    name: "Equipo A",
-    players: {
-      GK: [],
-      CL: [],
-      CR: [],
-      ML: [],
-      MR: [],
-      ST: [],
-      SUB: [],
-    },
-  },
-  nietos: {
-    id: "Equipo B",
-    name: "Equipo B",
-    players: {
-      GK: [],
-      CL: [],
-      CR: [],
-      ML: [],
-      MR: [],
-      ST: [],
-      SUB: [],
-    },
-  },
-};
+import { createDefaultTeams, getAllTeamIds } from "@/lib/teams";
 
 export default function Home() {
   // Use mobile detection for touch vs mouse interactions
@@ -61,8 +32,10 @@ export default function Home() {
   const [isCreateMatchModalOpen, setIsCreateMatchModalOpen] = useState(false);
 
   // Players and teams state
-  const [availablePlayers, setAvailablePlayers] = useState<AppPlayer[]>([]);
-  const [teams, setTeams] = useState<{ [key: string]: Team }>(DEFAULT_TEAMS);
+  const [players, setPlayers] = useState<AppPlayer[]>([]);
+  const [teams, setTeams] = useState<{ [key: string]: Team }>(
+    createDefaultTeams()
+  );
   const [selectedPosition, setSelectedPosition] = useState<{
     position: PlayerPosition;
     teamId: string;
@@ -103,7 +76,7 @@ export default function Home() {
           nickname: p.nickname || undefined,
         }));
 
-        setAvailablePlayers(appPlayers);
+        setPlayers(appPlayers);
         return;
       }
 
@@ -128,7 +101,7 @@ export default function Home() {
       try {
         const lineups = await lineupApi.getAll(matchId);
 
-        if (lineups && (lineups.borjas || lineups.nietos)) {
+        if (lineups && Object.keys(lineups).length > 0) {
           setTeams(lineups);
 
           // Filter out players already assigned to teams
@@ -142,16 +115,16 @@ export default function Home() {
             });
           });
 
-          setAvailablePlayers(
+          setPlayers(
             appPlayers.filter((player) => !assignedPlayerIds.has(player.id))
           );
         } else {
           // If no lineups exist for this match, show all available players
-          setAvailablePlayers(appPlayers);
+          setPlayers(appPlayers);
         }
       } catch (error) {
         console.error("Error loading match lineups:", error);
-        setAvailablePlayers(appPlayers);
+        setPlayers(appPlayers);
       }
     } catch (error) {
       console.error(`Error loading data for match ${matchId}:`, error);
@@ -174,10 +147,10 @@ export default function Home() {
           number: p.number || undefined,
           nickname: p.nickname || undefined,
         }));
-        setAvailablePlayers(appPlayers);
+        setPlayers(appPlayers);
       } catch (err) {
         console.error("Error loading fallback players:", err);
-        setAvailablePlayers([]);
+        setPlayers([]);
       }
     }
   };
@@ -235,13 +208,12 @@ export default function Home() {
     }
 
     // Find the player from available players or teams
-    let player: AppPlayer | undefined = availablePlayers.find(
-      (p) => p.id === playerId
-    );
+    let player: AppPlayer | undefined = players.find((p) => p.id === playerId);
 
     if (!player) {
       // If not in availablePlayers, look in teams
-      for (const tId of ["borjas", "nietos"] as const) {
+      const teamIds = getAllTeamIds();
+      for (const tId of teamIds) {
         for (const pos of Object.keys(teams[tId].players) as PlayerPosition[]) {
           const foundPlayer = teams[tId].players[pos].find(
             (p) => p.id === playerId
@@ -263,11 +235,12 @@ export default function Home() {
 
     // Step 2: Remove player from available players if they're there
     if (!player.team) {
-      setAvailablePlayers((prev) => prev.filter((p) => p.id !== playerId));
+      setPlayers((prev) => prev.filter((p) => p.id !== playerId));
     }
 
     // Step 3: Remove player from any team and position they might be in
-    for (const tId of ["borjas", "nietos"] as const) {
+    const teamIds = getAllTeamIds();
+    for (const tId of teamIds) {
       for (const pos of Object.keys(
         newTeams[tId].players
       ) as PlayerPosition[]) {
@@ -318,7 +291,8 @@ export default function Home() {
     let playerPosition: PlayerPosition | null = null;
 
     // Search in teams to get the player's current position and team
-    for (const teamId of ["borjas", "nietos"] as const) {
+    const teamIds = getAllTeamIds();
+    for (const teamId of teamIds) {
       for (const pos of Object.keys(
         teams[teamId].players
       ) as PlayerPosition[]) {
@@ -351,7 +325,7 @@ export default function Home() {
       ...player,
       team: null,
     };
-    setAvailablePlayers((prev) => [...prev, playerToAdd]);
+    setPlayers((prev) => [...prev, playerToAdd]);
 
     // Step 4: Update the teams state
     setTeams(newTeams);
@@ -377,7 +351,8 @@ export default function Home() {
 
     // Collect all players from teams
     const allPlayers: AppPlayer[] = [];
-    for (const teamId of ["borjas", "nietos"] as const) {
+    const teamIds = getAllTeamIds();
+    for (const teamId of teamIds) {
       for (const pos of Object.keys(
         teams[teamId].players
       ) as PlayerPosition[]) {
@@ -391,10 +366,10 @@ export default function Home() {
     }
 
     // Reset teams to default (empty)
-    setTeams(DEFAULT_TEAMS);
+    setTeams(createDefaultTeams());
 
     // Add all team players back to available players
-    setAvailablePlayers((prev) => [...prev, ...allPlayers]);
+    setPlayers((prev) => [...prev, ...allPlayers]);
 
     // Reset the lineups in the database for the current match
     try {
@@ -434,7 +409,7 @@ export default function Home() {
           number: p.number || undefined,
           nickname: p.nickname || undefined,
         }));
-        setAvailablePlayers(appPlayers);
+        setPlayers(appPlayers);
       }
     } catch (error) {
       console.error("Error initializing database:", error);
@@ -446,14 +421,89 @@ export default function Home() {
   // Handle when a player is picked in the draft system
   const handleDraftPlayerPicked = (playerId: string, teamId: string) => {
     // Find player in available players
-    const player = availablePlayers.find((p) => p.id === playerId);
+    const player = players.find((p) => p.id === playerId);
     if (!player) return;
 
     // Get default position based on player's preferred position or SUB
     const position = player.position || "SUB";
 
-    // Use the existing handlePlayerDrop function to add player to team
-    handlePlayerDrop(playerId, teamId, position);
+    // Use a special function for draft picks that bypasses the draft active check
+    handleDraftPlayerAddition(playerId, teamId, position);
+  };
+
+  // Special function to handle player additions during draft (bypasses draft active check)
+  const handleDraftPlayerAddition = async (
+    playerId: string,
+    teamId: string,
+    position: PlayerPosition
+  ) => {
+    // Find the player from available players or teams
+    let player: AppPlayer | undefined = players.find((p) => p.id === playerId);
+
+    if (!player) {
+      // If not in availablePlayers, look in teams
+      const teamIds = getAllTeamIds();
+      for (const tId of teamIds) {
+        for (const pos of Object.keys(teams[tId].players) as PlayerPosition[]) {
+          const foundPlayer = teams[tId].players[pos].find(
+            (p) => p.id === playerId
+          );
+          if (foundPlayer) {
+            player = foundPlayer;
+            break;
+          }
+        }
+        if (player) break;
+      }
+    }
+
+    // If player not found, exit function
+    if (!player) return;
+
+    // Step 1: Create a new teams object to avoid direct mutation
+    const newTeams = JSON.parse(JSON.stringify(teams)) as typeof teams;
+
+    // Step 2: Remove player from available players if they're there
+    if (!player.team) {
+      setPlayers((prev) => prev.filter((p) => p.id !== playerId));
+    }
+
+    // Step 3: Remove player from any team and position they might be in
+    const teamIds = getAllTeamIds();
+    for (const tId of teamIds) {
+      for (const pos of Object.keys(
+        newTeams[tId].players
+      ) as PlayerPosition[]) {
+        newTeams[tId].players[pos] = newTeams[tId].players[pos].filter(
+          (p) => p.id !== playerId
+        );
+      }
+    }
+
+    // Step 4: Add player to the new team and position
+    const playerToAdd = {
+      ...player,
+      team: teamId,
+    };
+    newTeams[teamId].players[position].push(playerToAdd);
+
+    // Step 5: Update the teams state
+    setTeams(newTeams);
+
+    // Step 6: Save the player position to the database for the current match
+    try {
+      if (latestMatch) {
+        await lineupApi.savePosition(
+          teamId,
+          playerId,
+          position,
+          0, // default order
+          latestMatch.id
+        );
+      }
+    } catch (error) {
+      console.error("Error al guardar la posición del jugador:", error);
+    }
   };
 
   // Update draft system state
@@ -490,7 +540,7 @@ export default function Home() {
         setLatestMatch(latestMatchData);
 
         // Reset teams to default (empty)
-        setTeams(DEFAULT_TEAMS);
+        setTeams(createDefaultTeams());
 
         // Load the latest match lineups
         await loadMatchLineups(latestMatchData.id);
@@ -598,7 +648,7 @@ export default function Home() {
             <div className="flex justify-center items-center h-64">
               <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
             </div>
-          ) : !dbInitialized && availablePlayers.length === 0 ? (
+          ) : !dbInitialized && players.length === 0 ? (
             <div className="bg-gray-800 p-6 rounded-lg mb-8 text-center">
               <h2 className="text-2xl font-bold text-white mb-4">
                 Base de datos no inicializada
@@ -623,7 +673,7 @@ export default function Home() {
             <>
               {showDraftSystem && (
                 <DraftSystem
-                  availablePlayers={availablePlayers}
+                  availablePlayers={players}
                   teams={teams}
                   matchId={latestMatch ? latestMatch.id : ""}
                   onDraftStateChange={handleDraftStateChange}
@@ -653,30 +703,24 @@ export default function Home() {
                     <div className="lg:flex gap-6">
                       {/* Team lineups (Left) */}
                       <div className="w-full lg:w-3/4 grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 lg:mb-0">
-                        <TeamContainer
-                          team={teams.borjas}
-                          onPlayerDrop={handlePlayerDrop}
-                          onPlayerRemove={handleRemovePlayer}
-                          isMobileView={isMobileView}
-                          availablePlayers={availablePlayers}
-                          isDropDisabled={isDraftActive}
-                          onPositionClick={handlePositionClick}
-                        />
-                        <TeamContainer
-                          team={teams.nietos}
-                          onPlayerDrop={handlePlayerDrop}
-                          onPlayerRemove={handleRemovePlayer}
-                          isMobileView={isMobileView}
-                          availablePlayers={availablePlayers}
-                          isDropDisabled={isDraftActive}
-                          onPositionClick={handlePositionClick}
-                        />
+                        {getAllTeamIds().map((teamId) => (
+                          <TeamContainer
+                            key={teamId}
+                            team={teams[teamId]}
+                            onPlayerDrop={handlePlayerDrop}
+                            onPlayerRemove={handleRemovePlayer}
+                            isMobileView={isMobileView}
+                            availablePlayers={players}
+                            isDropDisabled={isDraftActive}
+                            onPositionClick={handlePositionClick}
+                          />
+                        ))}
                       </div>
 
                       {/* Available Players (Right) */}
                       <div className="w-full lg:w-1/4">
                         <AvailablePlayers
-                          players={availablePlayers}
+                          players={players}
                           isMobileView={isMobileView}
                           isDragDisabled={isDraftActive}
                         />
@@ -696,7 +740,7 @@ export default function Home() {
                     {selectedPosition && (
                       <PlayerSelectionModal
                         selectedPosition={selectedPosition.position}
-                        availablePlayers={availablePlayers}
+                        availablePlayers={players}
                         onPlayerSelect={handlePlayerSelect}
                         onClose={() => setSelectedPosition(null)}
                         getPositionName={(position) => {

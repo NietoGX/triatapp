@@ -1,6 +1,10 @@
 import { supabase } from "./supabase";
 import { v4 as uuidv4 } from "uuid";
-import { Player, PlayerPosition, TeamLineup } from "./types";
+import { PlayerPosition } from "./types";
+import { Team } from "@/types";
+import { createDefaultTeams } from "@/lib/teams";
+
+type TeamLineup = { [key: string]: Team };
 
 /**
  * Guarda la asignación de un jugador a una posición en un equipo
@@ -123,81 +127,81 @@ export async function removePlayerFromTeam(
  */
 export async function loadTeamLineups(matchId?: string): Promise<TeamLineup> {
   try {
-    // 1. Obtener todas las asignaciones de jugadores a equipos
+    // Build query to get positioned players
     let query = supabase
       .from("team_player_positions")
       .select("*")
-      .order("position_order");
+      .order("position_order", { ascending: true });
 
-    // Filter by match_id if provided, otherwise get general positions (null match_id)
     if (matchId) {
+      // Get match-specific lineups
       query = query.eq("match_id", matchId);
     } else {
+      // Get general lineups (no match_id)
       query = query.is("match_id", null);
     }
 
-    const { data: positionsData, error: positionsError } = await query;
+    const { data: positionsData, error } = await query;
 
-    if (positionsError) throw positionsError;
+    if (error) throw error;
 
-    // 2. Obtener todos los jugadores para tener su información completa
+    // Initialize team lineup structure with dynamic teams
+    const teamLineup: TeamLineup = createDefaultTeams();
+
+    if (!positionsData || positionsData.length === 0) {
+      return teamLineup;
+    }
+
+    // Get unique player IDs to fetch player data
+    const playerIds = [...new Set(positionsData.map((p) => p.player_id))];
+
+    // Fetch player data separately
     const { data: playersData, error: playersError } = await supabase
       .from("players")
-      .select("*");
+      .select("*")
+      .in("id", playerIds);
 
     if (playersError) throw playersError;
 
-    // 3. Obtener información de los equipos
-    const { data: teamsData, error: teamsError } = await supabase
-      .from("teams")
-      .select("*");
+    // Create a player lookup map
+    const playersMap = new Map(playersData?.map((p) => [p.id, p]) || []);
 
-    if (teamsError) throw teamsError;
+    // Populate with data
+    positionsData?.forEach((position) => {
+      const player = playersMap.get(position.player_id);
+      if (!player) return;
 
-    // Crear un mapa de jugadores por ID para fácil acceso
-    const playersMap: Record<string, Player> = {};
-    playersData.forEach((player) => {
-      playersMap[player.id] = player;
-    });
+      const teamPosition = position.position as PlayerPosition;
 
-    // Crear el objeto de alineaciones
-    const teamLineup: TeamLineup = {};
+      // Make sure the team exists in our lineup structure
+      if (!teamLineup[position.team_id]) {
+        teamLineup[position.team_id] = {
+          id: position.team_id,
+          name: `Equipo ${position.team_id}`,
+          players: {
+            GK: [],
+            CL: [],
+            CR: [],
+            ML: [],
+            MR: [],
+            ST: [],
+            SUB: [],
+          },
+        };
+      }
 
-    // Inicializar equipos con estructura vacía
-    teamsData.forEach((team) => {
-      teamLineup[team.id] = {
-        id: team.id,
-        name: team.name,
-        players: {
-          GK: [],
-          CL: [],
-          CR: [],
-          ML: [],
-          MR: [],
-          ST: [],
-          SUB: [],
-        },
-      };
-    });
+      // Make sure the position array exists
+      if (!teamLineup[position.team_id].players[teamPosition]) {
+        teamLineup[position.team_id].players[teamPosition] = [];
+      }
 
-    // Llenar las posiciones con los jugadores
-    positionsData.forEach((position) => {
-      const player = playersMap[position.player_id];
-      if (player && teamLineup[position.team_id]) {
-        const teamPosition = position.position as PlayerPosition;
-
-        // Asegurarse de que la posición existe en el equipo
-        if (!teamLineup[position.team_id].players[teamPosition]) {
-          teamLineup[position.team_id].players[teamPosition] = [];
-        }
-
-        // Añadir el jugador a la posición
+      if (teamLineup[position.team_id]) {
         teamLineup[position.team_id].players[teamPosition].push({
           id: player.id,
           name: player.name,
           rating: player.rating,
           position: player.position as PlayerPosition | null,
-          team: position.team_id as "borjas" | "nietos",
+          team: position.team_id,
           stats: {
             goals: player.goals,
             assists: player.assists,
@@ -213,34 +217,7 @@ export async function loadTeamLineups(matchId?: string): Promise<TeamLineup> {
     return teamLineup;
   } catch (error) {
     console.error("Error al cargar las alineaciones:", error);
-    return {
-      borjas: {
-        id: "Equipo A",
-        name: "Equipo A",
-        players: {
-          GK: [],
-          CL: [],
-          CR: [],
-          ML: [],
-          MR: [],
-          ST: [],
-          SUB: [],
-        },
-      },
-      nietos: {
-        id: "Equipo B",
-        name: "Equipo B",
-        players: {
-          GK: [],
-          CL: [],
-          CR: [],
-          ML: [],
-          MR: [],
-          ST: [],
-          SUB: [],
-        },
-      },
-    };
+    return createDefaultTeams();
   }
 }
 

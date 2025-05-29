@@ -210,35 +210,107 @@ export async function savePlayerMatchStats(statsData: {
  */
 export async function getMatchAvailablePlayers(matchId: string) {
   try {
-    // Get player IDs from match_available_players
+    console.log(
+      `[DEBUG] === STARTING getMatchAvailablePlayers for match: ${matchId} ===`
+    );
+
+    // Step 1: Get all players marked as available for this match
     const { data: availablePlayers, error: availableError } = await supabase
       .from("match_available_players")
       .select("player_id")
       .eq("match_id", matchId)
       .eq("is_available", true);
 
-    if (availableError) throw availableError;
+    if (availableError) {
+      console.error(
+        "[DEBUG] Error fetching available players:",
+        availableError
+      );
+      throw availableError;
+    }
+
+    console.log(`[DEBUG] Raw available players from DB:`, availablePlayers);
 
     if (!availablePlayers || availablePlayers.length === 0) {
+      console.log("[DEBUG] No available players found, returning empty array");
       return [];
     }
 
-    // Get full player details
-    const playerIds = availablePlayers.map((p) => p.player_id);
-    const { data: players, error: playersError } = await supabase
+    const availablePlayerIds = availablePlayers.map((p) => p.player_id);
+    console.log(
+      `[DEBUG] Available player IDs (${availablePlayerIds.length}):`,
+      availablePlayerIds
+    );
+
+    // Step 2: Get drafted player IDs
+    const { data: draftHistory, error: draftError } = await supabase
+      .from("draft_history")
+      .select("player_id")
+      .eq("match_id", matchId);
+
+    if (draftError) {
+      console.error("[DEBUG] Error fetching draft history:", draftError);
+      throw draftError;
+    }
+
+    console.log(`[DEBUG] Raw draft history from DB:`, draftHistory);
+
+    const draftedPlayerIds = [
+      ...new Set((draftHistory || []).map((d) => d.player_id)),
+    ];
+    console.log(
+      `[DEBUG] Drafted player IDs (${draftedPlayerIds.length}):`,
+      draftedPlayerIds
+    );
+
+    // Step 3: Filter out drafted players
+    const filteredPlayerIds = availablePlayerIds.filter((playerId) => {
+      const isDrafted = draftedPlayerIds.includes(playerId);
+      console.log(
+        `[DEBUG] Player ${playerId}: ${
+          isDrafted ? "DRAFTED (filtered out)" : "AVAILABLE (keeping)"
+        }`
+      );
+      return !isDrafted;
+    });
+
+    console.log(
+      `[DEBUG] Final filtered player IDs (${filteredPlayerIds.length}):`,
+      filteredPlayerIds
+    );
+
+    if (filteredPlayerIds.length === 0) {
+      console.log(
+        "[DEBUG] No players available after filtering, returning empty array"
+      );
+      return [];
+    }
+
+    // Step 4: Get player details
+    console.log(
+      `[DEBUG] Fetching player details for ${filteredPlayerIds.length} players`
+    );
+    const { data: playerDetails, error: playersError } = await supabase
       .from("players")
       .select("*")
-      .in("id", playerIds);
+      .in("id", filteredPlayerIds);
 
-    if (playersError) throw playersError;
+    if (playersError) {
+      console.error("[DEBUG] Error fetching player details:", playersError);
+      throw playersError;
+    }
 
-    return players || [];
-  } catch (error) {
-    console.error(
-      `Error getting available players for match ${matchId}:`,
-      error
+    console.log(`[DEBUG] Player details fetched:`, playerDetails);
+    console.log(
+      `[DEBUG] === FINISHED getMatchAvailablePlayers, returning ${
+        playerDetails?.length || 0
+      } players ===`
     );
-    return [];
+
+    return playerDetails || [];
+  } catch (error) {
+    console.error("[DEBUG] === ERROR in getMatchAvailablePlayers ===", error);
+    throw error;
   }
 }
 

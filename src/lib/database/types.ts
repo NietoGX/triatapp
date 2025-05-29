@@ -20,7 +20,7 @@ export type AppPlayer = {
   name: string;
   rating: number;
   position: PlayerPosition | null;
-  team: "borjas" | "nietos" | null;
+  team: string | null;
   stats: {
     goals: number;
     assists: number;

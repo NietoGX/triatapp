@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { draftApi } from "@/lib/api";
 import { AppPlayer, Team } from "@/types";
 import { DraftHistoryItem, DraftState } from "@/lib/database/types";
-import { lineupApi } from "@/lib/api";
 
 type DraftSystemProps = {
   availablePlayers: AppPlayer[];
@@ -35,6 +34,7 @@ export default function DraftSystem({
   const [error, setError] = useState<string | null>(null);
   const [fadeEffect, setFadeEffect] = useState(false);
   const [showTurnIndicator, setShowTurnIndicator] = useState(false);
+  const [touchActive, setTouchActive] = useState(false);
 
   // Cargar el estado del triaje
   const loadDraftState = useCallback(async () => {
@@ -103,34 +103,29 @@ export default function DraftSystem({
       setIsLoading(true);
       setError(null);
 
-      // Primero, resetear los equipos
-      try {
-        // Resetear alineaciones en la base de datos
-        await lineupApi.reset(matchId);
+      console.log("[DRAFT SYSTEM] Starting new draft...");
 
-        // Si existe una función para resetear equipos en el componente padre, la llamamos
-        if (onTeamsReset) {
-          await onTeamsReset();
-        }
-      } catch (resetError) {
-        console.error("Error al resetear equipos:", resetError);
-        setError("Error al resetear equipos");
-        setIsLoading(false);
-        return;
-      }
-
-      // Luego, iniciar el triaje
+      // Iniciar el triaje (ahora incluye reset completo en el backend)
       const result = await draftApi.start(matchId);
 
       if (result.success) {
+        console.log("[DRAFT SYSTEM] Draft started successfully");
+
+        // Actualizar el estado local
         await loadDraftState();
         setDraftHistory([]);
+
+        // Llamar a la función de reset del componente padre para actualizar la UI
+        if (onTeamsReset) {
+          await onTeamsReset();
+        }
       } else {
         setError("Error al iniciar el triaje");
       }
 
       setIsLoading(false);
-    } catch {
+    } catch (error) {
+      console.error("[DRAFT SYSTEM] Error starting draft:", error);
       setError("Error al iniciar el triaje");
       setIsLoading(false);
     }
@@ -167,22 +162,21 @@ export default function DraftSystem({
 
     if (!draftState.current_team || isPickingPlayer) return;
 
+    // Store the current team before the state gets updated
+    const pickingTeam = draftState.current_team;
+
     try {
       setIsPickingPlayer(true);
       setError(null);
-      const result = await draftApi.pickPlayer(
-        draftState.current_team,
-        playerId,
-        matchId
-      );
+      const result = await draftApi.pickPlayer(pickingTeam, playerId, matchId);
 
       if (result.success) {
-        // Actualizar el estado y el historial
+        // Notificar al componente padre para actualizar la UI ANTES de actualizar el estado
+        onPlayerPicked(playerId, pickingTeam);
+
+        // Luego actualizar el estado y el historial
         await loadDraftState();
         await loadDraftHistory();
-
-        // Notificar al componente padre para actualizar la UI
-        onPlayerPicked(playerId, draftState.current_team);
       } else {
         setError(result.error?.message || "Error al seleccionar jugador");
       }
@@ -333,9 +327,15 @@ export default function DraftSystem({
               return (
                 <div
                   key={player.id}
-                  onClick={() => isSelectable && handlePickPlayer(player.id)}
+                  onClick={() => {
+                    // Solo procesar onClick si no hay interacción táctil activa
+                    if (!touchActive && isSelectable) {
+                      handlePickPlayer(player.id);
+                    }
+                  }}
                   onTouchStart={(e) => {
                     if (isSelectable) {
+                      setTouchActive(true);
                       e.currentTarget.style.transform = "scale(0.98)";
                       e.currentTarget.style.backgroundColor =
                         "rgba(59, 130, 246, 0.3)";
@@ -354,12 +354,18 @@ export default function DraftSystem({
                       e.currentTarget.style.transform = "scale(1)";
                       e.currentTarget.style.backgroundColor = "";
                       handlePickPlayer(player.id);
+
+                      // Resetear el flag después de un pequeño delay
+                      setTimeout(() => {
+                        setTouchActive(false);
+                      }, 100);
                     }
                   }}
                   onTouchCancel={(e) => {
                     if (isSelectable) {
                       e.currentTarget.style.transform = "scale(1)";
                       e.currentTarget.style.backgroundColor = "";
+                      setTouchActive(false);
                     }
                   }}
                   role="button"

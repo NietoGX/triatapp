@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "@/lib/database/supabase";
+import { getAllTeamIds, getTeamsForDB } from "@/lib/teams";
 
 /**
  * API endpoint para inicializar los equipos en la base de datos
@@ -15,16 +16,18 @@ export default async function handler(
   }
 
   try {
+    const teamIds = getAllTeamIds();
+
     // Verificar si ya existen equipos
     const { data: existingTeams, error: checkError } = await supabase
       .from("teams")
       .select("id")
-      .in("id", ["borjas", "nietos"]);
+      .in("id", teamIds);
 
     if (checkError) throw checkError;
 
-    // Si ya existen ambos equipos, no hacer nada
-    if (existingTeams && existingTeams.length === 2) {
+    // Si ya existen todos los equipos, no hacer nada
+    if (existingTeams && existingTeams.length === teamIds.length) {
       return res.status(200).json({
         success: true,
         message: "Los equipos ya están inicializados",
@@ -32,21 +35,10 @@ export default async function handler(
     }
 
     // Crear los equipos por defecto
-    const teamsToInsert = [];
-
-    if (!existingTeams?.find((team) => team.id === "borjas")) {
-      teamsToInsert.push({
-        id: "Equipo A",
-        name: "Equipo A",
-      });
-    }
-
-    if (!existingTeams?.find((team) => team.id === "nietos")) {
-      teamsToInsert.push({
-        id: "Equipo B",
-        name: "Equipo B",
-      });
-    }
+    const teamsForDB = getTeamsForDB();
+    const teamsToInsert = teamsForDB.filter(
+      (team) => !existingTeams?.find((existing) => existing.id === team.id)
+    );
 
     // Insertar equipos faltantes
     if (teamsToInsert.length > 0) {

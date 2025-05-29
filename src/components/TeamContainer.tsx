@@ -1,6 +1,12 @@
 import { useDrag, useDrop } from "react-dnd";
 import { AppPlayer, PlayerPosition, Team } from "@/types";
 import { useRef, useEffect, useState } from "react";
+import {
+  getTeamColor,
+  getTeamBorderColor,
+  getTeamTextColor,
+  getTeamBorderSolidColor,
+} from "@/lib/teams";
 
 interface TeamContainerProps {
   team: Team;
@@ -127,14 +133,13 @@ export const TeamContainer = ({
     }, [connectDrag]);
 
     const disabledClass = isDropDisabled ? "opacity-70" : "";
+    const teamColor = getTeamColor(team.id);
 
     return (
       <div
         ref={divRef}
         onClick={(e) => handlePlayerClick(player, e)}
-        className={`${
-          team.id === "borjas" ? "bg-red-600" : "bg-purple-600"
-        } rounded-lg shadow-md p-2 sm:p-3 flex flex-col items-center justify-center w-full h-full ${
+        className={`${teamColor} rounded-lg shadow-md p-2 sm:p-3 flex flex-col items-center justify-center w-full h-full ${
           isDragging ? "opacity-50" : "opacity-100"
         } cursor-pointer relative group ${disabledClass}`}
       >
@@ -411,25 +416,25 @@ export const TeamContainer = ({
 
   return (
     <div
-      className={`${
-        team.id === "borjas" ? "border-red-500/60" : "border-purple-500/60"
-      } border rounded-2xl bg-black/20 backdrop-blur-md p-3 sm:p-4 shadow-lg relative overflow-hidden`}
+      className={`${getTeamBorderColor(
+        team.id
+      )} border rounded-2xl bg-black/20 backdrop-blur-md p-3 sm:p-4 shadow-lg relative overflow-hidden`}
     >
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4">
           <h3
-            className={`font-bold text-lg sm:text-xl ${
-              team.id === "borjas" ? "text-red-400" : "text-purple-400"
-            }`}
+            className={`font-bold text-lg sm:text-xl ${getTeamTextColor(
+              team.id
+            )}`}
           >
             {team.name}
           </h3>
           <div className="flex items-center">
             <span className="text-xs text-white/60 mr-1">Media:</span>
             <span
-              className={`bg-black/50 text-white text-sm px-2 py-0.5 rounded-md ${
-                team.id === "borjas" ? "border-red-500" : "border-purple-500"
-              } border`}
+              className={`bg-black/50 text-white text-sm px-2 py-0.5 rounded-md ${getTeamBorderSolidColor(
+                team.id
+              )} border`}
             >
               {getTeamRating()}
             </span>

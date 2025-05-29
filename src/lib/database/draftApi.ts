@@ -10,6 +10,10 @@ export async function startDraft(matchId: string) {
       throw new Error("Se requiere un ID de partido para iniciar el triaje");
     }
 
+    console.log(
+      `[START DRAFT] Starting complete reset and draft for match: ${matchId}`
+    );
+
     // Obtener los equipos disponibles
     const { data: teams, error: teamsError } = await supabase
       .from("teams")
@@ -20,12 +24,40 @@ export async function startDraft(matchId: string) {
       throw new Error("Se necesitan al menos dos equipos para el triaje");
     }
 
-    // Seleccionar aleatoriamente un equipo para comenzar
+    // PASO 1: Limpiar COMPLETAMENTE todas las alineaciones del partido
+    const { error: clearLineupsError } = await supabase
+      .from("team_player_positions")
+      .delete()
+      .eq("match_id", matchId);
+
+    if (clearLineupsError) {
+      console.error("[START DRAFT] Error clearing lineups:", clearLineupsError);
+      throw clearLineupsError;
+    }
+    console.log("[START DRAFT] ✅ All lineups cleared");
+
+    // PASO 2: Eliminar historial de triaje anterior para este partido
+    const { error: clearHistoryError } = await supabase
+      .from("draft_history")
+      .delete()
+      .eq("match_id", matchId);
+
+    if (clearHistoryError) {
+      console.error(
+        "[START DRAFT] Error clearing draft history:",
+        clearHistoryError
+      );
+      throw clearHistoryError;
+    }
+    console.log("[START DRAFT] ✅ Draft history cleared");
+
+    // PASO 3: Seleccionar aleatoriamente un equipo para comenzar
     const randomIndex = Math.floor(Math.random() * teams.length);
     const startingTeam = teams[randomIndex].id;
+    console.log(`[START DRAFT] Starting team selected: ${startingTeam}`);
 
-    // Actualizar o crear el estado del triaje para este partido
-    const { error } = await supabase.from("draft_state").upsert(
+    // PASO 4: Actualizar o crear el estado del triaje para este partido
+    const { error: stateError } = await supabase.from("draft_state").upsert(
       {
         id: "current",
         match_id: matchId,
@@ -36,15 +68,15 @@ export async function startDraft(matchId: string) {
       { onConflict: "id, match_id" }
     );
 
-    if (error) throw error;
+    if (stateError) {
+      console.error("[START DRAFT] Error updating draft state:", stateError);
+      throw stateError;
+    }
+    console.log("[START DRAFT] ✅ Draft state activated");
 
-    // Eliminar historial de triaje anterior para este partido
-    const { error: clearError } = await supabase
-      .from("draft_history")
-      .delete()
-      .eq("match_id", matchId);
-
-    if (clearError) throw clearError;
+    console.log(
+      `[START DRAFT] ✅ Complete draft initialization successful for match: ${matchId}`
+    );
 
     return { success: true, startingTeam };
   } catch (error) {
@@ -218,26 +250,51 @@ export async function getDraftHistory(matchId: string) {
       return [];
     }
 
-    const { data, error } = await supabase
+    // First get the draft history records
+    const { data: historyData, error: historyError } = await supabase
       .from("draft_history")
-      .select(
-        `
-        id,
-        team_id,
-        player_id,
-        pick_order,
-        match_id,
-        created_at,
-        teams(name),
-        players(name)
-      `
-      )
+      .select("*")
       .eq("match_id", matchId)
       .order("pick_order");
 
-    if (error) throw error;
+    if (historyError) throw historyError;
 
-    return data || [];
+    if (!historyData || historyData.length === 0) {
+      return [];
+    }
+
+    // Get unique team and player IDs
+    const teamIds = [...new Set(historyData.map((h) => h.team_id))];
+    const playerIds = [...new Set(historyData.map((h) => h.player_id))];
+
+    // Fetch teams and players separately
+    const [teamsResponse, playersResponse] = await Promise.all([
+      supabase.from("teams").select("id, name").in("id", teamIds),
+      supabase.from("players").select("id, name").in("id", playerIds),
+    ]);
+
+    if (teamsResponse.error) throw teamsResponse.error;
+    if (playersResponse.error) throw playersResponse.error;
+
+    // Create lookup maps
+    const teamsMap = new Map(teamsResponse.data?.map((t) => [t.id, t]) || []);
+    const playersMap = new Map(
+      playersResponse.data?.map((p) => [p.id, p]) || []
+    );
+
+    // Combine the data
+    const enrichedHistory = historyData.map((history) => ({
+      id: history.id,
+      team_id: history.team_id,
+      player_id: history.player_id,
+      pick_order: history.pick_order,
+      match_id: history.match_id,
+      created_at: history.created_at,
+      teams: teamsMap.get(history.team_id) || { name: "Unknown Team" },
+      players: playersMap.get(history.player_id) || { name: "Unknown Player" },
+    }));
+
+    return enrichedHistory;
   } catch (error) {
     console.error("Error al obtener el historial del triaje:", error);
     return [];

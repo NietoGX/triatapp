@@ -259,45 +259,48 @@ interface CreateMatchData {
 
 // Match API functions
 export const matchApi = {
-  getAll: async () => {
-    try {
-      const response = await fetch("/api/matches");
-      if (!response.ok) throw new Error("Error fetching matches");
-      return (await response.json()) as Match[];
-    } catch (error) {
-      console.error("Error in matchApi.getAll:", error);
-      throw error;
-    }
+  // Get all matches
+  getAll: async (): Promise<Match[]> => {
+    return fetchAPI<Match[]>("/matches");
   },
 
-  getById: async (id: string) => {
-    try {
-      const response = await fetch(`/api/matches/${id}`);
-      if (!response.ok) throw new Error("Error fetching match");
-      return (await response.json()) as {
-        match: Match;
-        stats: PlayerMatchStats[];
-      };
-    } catch (error) {
-      console.error(`Error in matchApi.getById for id ${id}:`, error);
-      throw error;
-    }
+  // Get match by ID
+  getById: async (id: string): Promise<{ match: Match }> => {
+    return fetchAPI<{ match: Match }>(`/matches/${id}`);
   },
 
-  getAvailablePlayers: async (id: string) => {
-    try {
-      const response = await fetch(`/api/matches/${id}/available-players`);
-      if (!response.ok) {
-        console.warn(`No available players found for match ${id}`);
-        return []; // Return empty array instead of throwing error
+  // Get available players for a match
+  getAvailablePlayers: async (matchId: string): Promise<Player[]> => {
+    const timestamp = Date.now();
+    return fetchAPI<Player[]>(
+      `/matches/${matchId}/available-players?t=${timestamp}`
+    );
+  },
+
+  // Update match status
+  updateStatus: async (
+    id: string,
+    status: MatchStatus
+  ): Promise<{ success: boolean }> => {
+    return fetchAPI<{ success: boolean }>(`/matches/${id}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  // Reset all match data (lineups + draft)
+  resetAll: async (
+    matchId: string
+  ): Promise<{ success: boolean; message: string }> => {
+    return fetchAPI<{ success: boolean; message: string }>(
+      `/matches/${matchId}/reset-all`,
+      {
+        method: "POST",
       }
-      return (await response.json()) as Player[];
-    } catch (error) {
-      console.error(`Error fetching available players for match ${id}:`, error);
-      return []; // Return empty array on error
-    }
+    );
   },
 
+  // Create a new match
   create: async (data: CreateMatchData) => {
     try {
       const response = await fetch("/api/matches/create", {
@@ -318,17 +321,6 @@ export const matchApi = {
       console.error("Error in matchApi.create:", error);
       throw error;
     }
-  },
-
-  // Update match status
-  updateStatus: async (
-    matchId: string,
-    status: MatchStatus
-  ): Promise<{ success: boolean }> => {
-    return fetchAPI(`/api/matches/${matchId}/status`, {
-      method: "PUT",
-      body: JSON.stringify({ status }),
-    });
   },
 
   // Get match statistics
